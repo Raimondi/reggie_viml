@@ -4,11 +4,12 @@ let &runtimepath = expand('<sfile>:p:h:h:h').'/runVimTests,'.&rtp
 let &runtimepath = expand('<sfile>:p:h:h:h').'/vimtap,'.&rtp
 let &runtimepath = expand('<sfile>:p:h:h').','.&rtp
 let maps =
-      \ {'va': 'ar',
-      \  'vi': 'ir',
-      \  'oa': 'ar',
-      \  'oi': 'ir',
-      \  'pva': '<Plug>VimLTextObjectsAll',
-      \  'pvi': '<Plug>VimLTextObjectsInner',
-      \  'poa': '<Plug>VimLTextObjectsAll',
-      \  'poi': '<Plug>VimLTextObjectsInner'}
+      \ {'va': 'ak',
+      \  'vi': 'ik',
+      \  'oa': 'ak',
+      \  'oi': 'ik',
+      \  'pva': '<Plug>KeywordTextObjectsAll',
+      \  'pvi': '<Plug>KeywordTextObjectsInner',
+      \  'poa': '<Plug>KeywordTextObjectsAll',
+      \  'poi': '<Plug>KeywordTextObjectsInner'}
+let fname = 'ktextobjects'
