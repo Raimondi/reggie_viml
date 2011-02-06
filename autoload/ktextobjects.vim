@@ -1,13 +1,13 @@
-" File:        ftplugin/vim/vimtextobjects.vim
+" File:        autoload/ktextobjects.vim
 " Version:     0.1a
 " Modified:    2011-00-00
-" Description: This ftplugin provides new text objects for VimL files.
+" Description: This plugin provides new text objects for keyword based blocks.
 " Maintainer:  Israel Chauca F. <israelchauca@gmail.com>
-" Manual:      The new text objects are 'ir' and 'ar'. Place this file in
-"              'ftplugin/vim/' inside $HOME/.vim or somewhere else in your
+" Manual:      The new text objects are 'ik' and 'ak'. Place this file in
+"              'autoload/' inside $HOME/.vim or somewhere else in your
 "              runtimepath.
 "
-"              :let testing_VimLTextObjects = 1 to allow reloading of the
+"              :let testing_KeywordTextObjects = 1 to allow reloading of the
 "              plugin without closing Vim.
 "
 "              Multiple sentences on a single line are not handled by this
@@ -17,123 +17,95 @@
 " Pending:     - Consider continued lines for inner text objects.
 " ============================================================================
 
-" Allow users to disable ftplugins
-if exists('no_plugin_maps') || exists('no_vim_maps')
-  " User doesn't want this functionality.
-  finish
-endif
-
-" Mappings {{{1
-
-let s:undo_ftplugin =
-      \ 'sil! ounmap <buffer> ar|sil! ounmap <buffer> ir|'.
-      \ 'sil! vunmap <buffer> ar|sil! vunmap <buffer> ir'
-if exists('b:undo_ftplugin') && b:undo_ftplugin !~ 'vunmap <buffer> ar'
-  if b:undo_ftplugin =~ '^\s*$'
-    let b:undo_ftplugin = s:undo_ftplugin
-  else
-    let b:undo_ftplugin = s:undo_ftplugin.'|'.b:undo_ftplugin
-  endif
-elseif !exists('b:undo_ftplugin')
-  let b:undo_ftplugin = s:undo_ftplugin
-endif
-
-onoremap <silent> <buffer> <expr> <Plug>VimLTextObjectsAll
-      \ <SID>VimLTextObjectsAll(0)
-onoremap <silent> <buffer> <expr> <Plug>VimLTextObjectsInner
-      \ <SID>VimLTextObjectsInner(0)
-vnoremap <silent> <buffer> <Plug>VimLTextObjectsAll :call
-      \ <SID>VimLTextObjectsAll(1)<CR><Esc>gv
-vnoremap <silent> <buffer> <Plug>VimLTextObjectsInner :call
-      \ <SID>VimLTextObjectsInner(1)<CR><Esc>gv
-
-if !exists('testing_VimLTextObjects')
-  " Be nice with existing mappings
-
-  if !hasmapto('<Plug>VimLTextObjectsAll', 'o')
-    omap <unique> <buffer> ar <Plug>VimLTextObjectsAll
-  endif
-
-  if !hasmapto('<Plug>VimLTextObjectsInner', 'o')
-    omap <unique> <buffer> ir <Plug>VimLTextObjectsInner
-  endif
-
-  if !hasmapto('<Plug>VimLTextObjectsAll', 'v')
-    vmap <unique> <buffer> ar <Plug>VimLTextObjectsAll
-  endif
-
-  if !hasmapto('<Plug>VimLTextObjectsInner', 'v')
-    vmap <unique> <buffer> ir <Plug>VimLTextObjectsInner
-  endif
-else
-  " Unless we are testing, be merciless in this case
-  silent! ounmap <buffer> ar
-  silent! ounmap <buffer> ir
-  silent! vunmap <buffer> ar
-  silent! vunmap <buffer> ir
-  omap <silent> <buffer> ar <Plug>VimLTextObjectsAll
-  omap <silent> <buffer> ir <Plug>VimLTextObjectsInner
-  vmap <silent> <buffer> ar <Plug>VimLTextObjectsAll
-  vmap <silent> <buffer> ir <Plug>VimLTextObjectsInner
-endif
-
-" }}}1
-
-" Variables {{{1
-" Lines where this expression returns 1 will be skipped
-" Expression borrowed from default vim ftplugin
-let s:skip_e =
-      \ 'getline(".") =~ "^\\s*sy\\%[ntax]\\s\\+region" ||'.
-      \ 'synIDattr(synID(line("."),col("."),1),"name") =~? "comment\\|string\\|vim\k\{-}var"'
-
-
-" List of words that start a block at the beginning of the line
-let s:beg_words =
-      \ '<fu%[nction]>|<%(wh%[ile]|for)>|<if>|<try>|<aug%[roup]\s+%(END>)@!\S'
-
-" Start of the block matches this
-let s:start_p = '\C\v^\s*\zs%('.s:beg_words.')'
-
-" Middle of the block matches this
-let s:middle_p= '\C\v^\s*\zs%(<el%[seif]>|<cat%[ch]>|<fina%[lly]>)'
-
-" End of the block matches this
-let s:end_p   = '\C\v^\s*\zs%(<endf%[unction]>|<end%(w%[hile]|fo%[r])>|<en%[dif]>|<endt%[ry]>|<aug%[roup]\s+END>)'
-
-" Don't wrap or move the cursor
-let s:flags = 'Wn'
-
-" }}}1
-
 " Functions {{{1
 " Load guard {{{2
-if exists('loaded_VimLTextObjects') && !exists('testing_VimLTextObjects')
-  " No need to beyond this twice, unless testing.
-  finish
-elseif exists('testing_VimLTextObjects')
+if exists('testing_KeywordTextObjects')
   echom '----Loaded on: '.strftime("%Y %b %d %X")
 
   function! Test(first, last, test,...)
     if a:test == 1
-      return s:Match(a:first, s:start_p).', '.s:Match(a:first, s:middle_p).', '.s:Match(a:first, s:end_p)
+      return s:Match(a:first, b:kto.start_p).', '.s:Match(a:first, b:kto.middle_p).', '.s:Match(a:first, b:kto.end_p)
     elseif a:test == 2
-      return s:FindTextObject([a:first,0], [a:last,0], s:middle_p)
+      return s:FindTextObject([a:first,0], [a:last,0], b:kto.middle_p)
     elseif a:test == 3
-      return searchpairpos(s:start_p, s:middle_p, s:end_p, a:1, s:skip_e)
+      return searchpairpos(b:kto.start_p, b:kto.middle_p, b:kto.end_p, a:1, b:kto.skip_e)
     elseif a:test == 4
       return match(getline('.'), 'bWn')
     elseif a:test == 5
-      return searchpos(s:start_p,'bn')
+      return searchpos(b:kto.start_p,'bn')
     else
       throw 'Ooops!'
     endif
   endfunction
   command! -bar -range -buffer -nargs=+ Test echom string(Test(<line1>, <line2>, <f-args>))
 endif
-let loaded_VimLTextObjects = '0.1a'
+let loaded_KeywordTextObjects = '0.1a'
  "}}}2
 
-function! s:VimLTextObjectsAll(visual) range "{{{2
+function! ktextobjects#init() "{{{1
+
+  " Set b:undo_ftplugin
+  let s:undo_ftplugin =
+        \ 'sil! ounmap <buffer> ak|sil! ounmap <buffer> ik|'.
+        \ 'sil! vunmap <buffer> ak|sil! vunmap <buffer> ik'.
+        \ 'sil! unlet b:kto'
+  if exists('b:undo_ftplugin') && b:undo_ftplugin !~ 'vunmap <buffer> ar'
+    if b:undo_ftplugin =~ '^\s*$'
+      let b:undo_ftplugin = s:undo_ftplugin
+    else
+      let b:undo_ftplugin = s:undo_ftplugin.'|'.b:undo_ftplugin
+    endif
+  elseif !exists('b:undo_ftplugin')
+    let b:undo_ftplugin = s:undo_ftplugin
+  endif
+
+  " Create <Plug>mappings
+  onoremap <silent> <buffer> <expr> <Plug>KeywordTextObjectsAll
+        \ ktextobjects#TextObjectsAll(0)
+
+  onoremap <silent> <buffer> <expr> <Plug>KeywordTextObjectsInner
+        \ ktextobjects#TextObjectsInner(0)
+
+  vnoremap <silent> <buffer> <Plug>KeywordTextObjectsAll
+        \ :call ktextobjects#TextObjectsAll(1)<CR><Esc>gv
+
+  vnoremap <silent> <buffer> <Plug>KeywordTextObjectsInner
+        \ :call ktextobjects#TextObjectsInner(1)<CR><Esc>gv
+
+  " Create useful mappings
+  if !exists('testing_KeywordTextObjects')
+    " Be nice with existing mappings
+
+    if !hasmapto('<Plug>KeywordTextObjectsAll', 'o')
+      omap <unique> <buffer> ak <Plug>KeywordTextObjectsAll
+    endif
+
+    if !hasmapto('<Plug>KeywordTextObjectsInner', 'o')
+      omap <unique> <buffer> ik <Plug>KeywordTextObjectsInner
+    endif
+
+    if !hasmapto('<Plug>KeywordTextObjectsAll', 'v')
+      vmap <unique> <buffer> ak <Plug>KeywordTextObjectsAll
+    endif
+
+    if !hasmapto('<Plug>KeywordTextObjectsInner', 'v')
+      vmap <unique> <buffer> ik <Plug>KeywordTextObjectsInner
+    endif
+  else
+    " Unless we are testing, be merciless in this case
+    silent! ounmap <buffer> ak
+    silent! ounmap <buffer> ik
+    silent! vunmap <buffer> ak
+    silent! vunmap <buffer> ik
+    omap <buffer> ak <Plug>KeywordTextObjectsAll
+    omap <buffer> ik <Plug>KeywordTextObjectsInner
+    vmap <buffer> ak <Plug>KeywordTextObjectsAll
+    vmap <buffer> ik <Plug>KeywordTextObjectsInner
+  endif
+
+endfunction "}}}1
+
+function! ktextobjects#TextObjectsAll(visual) range "{{{2
   let lastline      = line('$')
   let start         = [0,0]
   let middle_p      = ''
@@ -145,8 +117,8 @@ function! s:VimLTextObjectsAll(visual) range "{{{2
   let passes  = 0
 
   let match_both_outer = (
-        \ s:Match(t_start[0] - 1, s:start_p) &&
-        \ s:Match(t_end[0] + 1, s:end_p))
+        \ s:Match(t_start[0] - 1, b:kto.start_p) &&
+        \ s:Match(t_end[0] + 1, b:kto.end_p))
   while  count1 > 0 &&
         \ (!(count1 > 1) || (t_start[0] - 1 > 1 && t_end[0] + 1 < lastline))
     let passes  += 1
@@ -200,7 +172,7 @@ function! s:VimLTextObjectsAll(visual) range "{{{2
 
 endfunction " }}}2
 
-function! s:VimLTextObjectsInner(visual, ...) range "{{{2
+function! ktextobjects#TextObjectsInner(visual, ...) range "{{{2
   " Recursing?
   if a:0
     let firstline = a:1
@@ -215,7 +187,7 @@ function! s:VimLTextObjectsInner(visual, ...) range "{{{2
   endif
   let line_eof    = line('$')
   let current     = {'start': [firstline,0], 'end': [lastline,0]}
-  let middle_p    = s:middle_p
+  let middle_p    = b:kto.middle_p
   let l:count     = 0
   let d_start     = 0
   let d_end       = 0
@@ -250,9 +222,9 @@ function! s:VimLTextObjectsInner(visual, ...) range "{{{2
           \         && original[1][1] >= len(getline(getpos("'>")[1])) + 1))
 
       " Determine what is selected
-      if getline(firstline - 1) =~ s:middle_p ||
-            \ getline(lastline + 1) =~ s:middle_p
-        " The line over and/or under matches a s:middle_p
+      if getline(firstline - 1) =~ b:kto.middle_p ||
+            \ getline(lastline + 1) =~ b:kto.middle_p
+        " The line over and/or under matches a b:kto.middle_p
         if !is_block
           " It is repeated with an inner middle block
           let is_repeat = 4
@@ -291,7 +263,7 @@ function! s:VimLTextObjectsInner(visual, ...) range "{{{2
   "echom 'Current: '.string(current).', count1: '.count1
   if count1 > 1
     " Let's recurse
-    let current = s:VimLTextObjectsInner(a:visual, current.start[0] + 1, current.end[0] - 1, count1)
+    let current = ktextobjects#TextObjectsInner(a:visual, current.start[0] + 1, current.end[0] - 1, count1)
   endif
   if a:0
     return current
@@ -331,34 +303,34 @@ function! s:FindTextObject(first, last, middle, ...) "{{{2
 
   " searchpair() starts looking at the cursor position. Find out where that
   " should be. Also determine if the current line should be searched.
-  if s:Match(a:first[0], s:end_p)
+  if s:Match(a:first[0], b:kto.end_p)
     let spos   = 1
-    let sflags = s:flags.'b'
+    let sflags = b:kto.flags.'b'
   else
     let spos   = 9999
-    let sflags = s:flags.'bc'
+    let sflags = b:kto.flags.'bc'
   endif
 
   " Let's see where they are
   call cursor(a:first[0], spos)
-  let first.start  = searchpairpos(s:start_p,a:middle,s:end_p,sflags,s:skip_e)
+  let first.start  = searchpairpos(b:kto.start_p,a:middle,b:kto.end_p,sflags,b:kto.skip_e)
 
   if a:middle == ''
-    let s_match = s:Match(a:first[0], s:start_p)
+    let s_match = s:Match(a:first[0], b:kto.start_p)
   else
-    let s_match = s:Match(a:first[0], s:start_p) || s:Match(a:first[0], a:middle)
+    let s_match = s:Match(a:first[0], b:kto.start_p) || s:Match(a:first[0], a:middle)
   endif
   if s_match
     let epos   = 9999
-    let eflags = s:flags
+    let eflags = b:kto.flags
   else
     let epos   = 1
-    let eflags = s:flags.'c'
+    let eflags = b:kto.flags.'c'
   endif
 
   " Let's see where they are
   call cursor(a:first[0], epos)
-  let first.end    = searchpairpos(s:start_p,a:middle,s:end_p,eflags,s:skip_e)
+  let first.end    = searchpairpos(b:kto.start_p,a:middle,b:kto.end_p,eflags,b:kto.skip_e)
 
   "echom 'First : '.string([first.start, first.end])
   if a:first == a:last
@@ -370,10 +342,10 @@ function! s:FindTextObject(first, last, middle, ...) "{{{2
     let first.range  = first.end[0] - first.start[0]
     let last.range   = last.end[0] - last.start[0]
     if first.end[0] <= last.start[0] &&
-          \ (getline(first.end[0])  =~ s:middle_p && first.range > 0) &&
-          \ (getline(last.start[0]) =~ s:middle_p && last.range  > 0)
+          \ (getline(first.end[0])  =~ b:kto.middle_p && first.range > 0) &&
+          \ (getline(last.start[0]) =~ b:kto.middle_p && last.range  > 0)
       " Looks like a middle inner match, start over without looking for
-      " s:middle_p
+      " b:kto.middle_p
       let result = s:FindTextObject(a:first, a:last, '', 1)
 
     else
@@ -421,9 +393,9 @@ endfunction "}}}2
 
 function! s:Match(line, part) " {{{2
   call cursor(a:line, 1)
-  let result = search(a:part, 'cW', a:line) > 0 && !eval(s:skip_e)
+  let result = search(a:part, 'cW', a:line) > 0 && !eval(b:kto.skip_e)
   "echom result
   return result
 endfunction " }}}2
 
-" vim: set et sw=2 sts=2:
+" vim: set et sw=2 sts=2 tw=78: {{{1
