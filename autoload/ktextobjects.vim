@@ -260,6 +260,7 @@ function! s:TextObjectsAll(visual,...) range "{{{2
       endif
       call cursor(start)
       exec 'normal! '.from_bol.v:operator.':normal! v'.end[0]."G".to_eol."\<CR>"
+      silent! call repeat#set(v:operator.b:ktextobjects_dict.allmap)
     else
       " No pair found, do nothing
       "return "\<Esc>"
@@ -380,6 +381,7 @@ function! s:TextObjectsInner(visual, ...) range "{{{2
       " Do operator pending magic
       exec 'normal! '.(current.start[0] + 1)
             \ .'G0'.v:operator.':normal! v'.(current.end[0] - 1)."G".to_end."\<CR>"
+      silent! call repeat#set(v:operator.b:ktextobjects_dict.innermap)
     else
       " No pair found, do nothing
       "return "\<Esc>"
