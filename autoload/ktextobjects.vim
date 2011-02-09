@@ -17,6 +17,78 @@
 " Pending:     - Consider continued lines for inner text objects.
 " ============================================================================
 
+" Variables {{{1
+" One Dict to rule them all, One Dict to find them,
+" One Dict to bring them all and in the darkness unlet them...
+let s:vars = {}
+
+" VimL settings: {{{2
+let s:vars.vim =
+      \ {'skip'     : '',
+      \  'start'    : '',
+      \  'middle'   : '',
+      \  'end'      : '',
+      \  'allmap'   : 'ak',
+      \  'innermap' : 'ik'}
+" Lines where this expression returns 1 will be skipped
+" Expression borrowed from default vim ftplugin
+let s:vars.vim.skip =
+      \ 'getline(".") =~ "^\\s*sy\\%[ntax]\\s\\+region" ||' .
+      \ 'synIDattr(synID(line("."),col("."),1),"name") =~? '.
+      \ '"comment\\|string\\|vim\k\{-}var"'
+
+" List of words that start a block at the beginning of the line
+let s:vars.vim.beg_words =
+      \ '<fu%[nction]>|<%(wh%[ile]|for)>|<if>|<try>|'.
+      \ '<aug%[roup]\s+%(END>)@!\S'
+
+" Start of the block matches this
+let s:vars.vim.start = '\C\v^\s*\zs%('.s:vars.vim.beg_words.')'
+
+" Middle of the block matches this
+let s:vars.vim.middle= '\C\v^\s*\zs%(<el%[seif]>|<cat%[ch]>|<fina%[lly]>)'
+
+" End of the block matches this
+let s:vars.vim.end   =
+      \ '\C\v^\s*\zs%(<endf%[unction]>|<end%(w%[hile]|fo%[r])>|'.
+      \ '<en%[dif]>|<endt%[ry]>|<aug%[roup]\s+END>)'
+
+" Ruby settings: {{{2
+let s:vars.ruby =
+      \ {'skip'     : '',
+      \  'start'    : '',
+      \  'middle'   : '',
+      \  'end'      : '',
+      \  'allmap'   : 'ak',
+      \  'innermap' : 'ik'}
+" Lines where this expression returns 1 will be skipped
+" Expression borrowed from default ruby ftplugin
+let s:vars.ruby.skip =
+      \ "synIDattr(synID(line('.'),col('.'),0),'name') =~ '"            .
+      \ "\\<ruby\\%(String\\|StringDelimiter\\|ASCIICode\\|Escape\\|"   .
+      \ "Interpolation\\|NoInterpolation\\|Comment\\|Documentation\\|"  .
+      \ "ConditionalModifier\\|RepeatModifier\\|OptionalDo\\|"          .
+      \ "Function\\|BlockArgument\\|KeywordAsMethod\\|ClassVariable\\|" .
+      \ "InstanceVariable\\|GlobalVariable\\|Symbol\\)\\>'"
+
+" List of words that start a block at the beginning of the line
+let s:vars.ruby.beg_words =
+      \ '<def>|<module>|<class>|<case>|<if>|<unless>|<begin>|'.
+      \ '<for>|<until>|<while>|<catch>'
+
+" Start of the block matches this
+let s:vars.ruby.start =
+      \ '\C\v^\s*\zs%('.s:vars.ruby.beg_words.')|'.
+      \ '%(%('.s:vars.ruby.beg_words.').*)@<!<do>'
+
+" Middle of the block matches this
+let s:vars.ruby.middle= '\C\v^\s*\zs%(<els%(e|if)>|<rescue>|<ensure>|<when>)'
+
+" End of the block matches this
+let s:vars.ruby.end   = '\C\v^\s*\zs<end>'
+
+" }}}1
+
 " Functions {{{1
 " Load guard {{{2
 if exists('testing_KeywordTextObjects')
@@ -24,15 +96,15 @@ if exists('testing_KeywordTextObjects')
 
   function! Test(first, last, test,...)
     if a:test == 1
-      return s:Match(a:first, b:kto.start_p).', '.s:Match(a:first, b:kto.middle_p).', '.s:Match(a:first, b:kto.end_p)
+      return s:Match(a:first, b:ktextobjects_dict.start).', '.s:Match(a:first, b:ktextobjects_dict.middle).', '.s:Match(a:first, b:ktextobjects_dict.end)
     elseif a:test == 2
-      return s:FindTextObject([a:first,0], [a:last,0], b:kto.middle_p)
+      return s:FindTextObject([a:first,0], [a:last,0], b:ktextobjects_dict.middle)
     elseif a:test == 3
-      return searchpairpos(b:kto.start_p, b:kto.middle_p, b:kto.end_p, a:1, b:kto.skip_e)
+      return searchpairpos(b:ktextobjects_dict.start, b:ktextobjects_dict.middle, b:ktextobjects_dict.end, a:1, b:ktextobjects_dict.skip)
     elseif a:test == 4
       return match(getline('.'), 'bWn')
     elseif a:test == 5
-      return searchpos(b:kto.start_p,'bn')
+      return searchpos(b:ktextobjects_dict.start,'bn')
     else
       throw 'Ooops!'
     endif
@@ -42,13 +114,46 @@ endif
 let loaded_KeywordTextObjects = '0.1a'
  "}}}2
 
-function! ktextobjects#init() "{{{1
+function! ktextobjects#get_dict(filetype) " {{{2
+  if exists('g:ktextobjects.'.a:filetype)
+    if !exists('g:ktextobjects.'.a:filetype.'.start')
+            \ || !exists('g:ktextobjects.'.a:filetype.'.end')
+      return get(s:vars, a:filetype, {})
+    endif
+    let default = get(s:vars, a:filetype, {'skip': '0', 'middle': '', 'allmap': 'ak', 'innermap': 'ik'})
+    return {
+          \ 'skip'     : get(g:ktextobjects[a:filetype], 'skip', default.skip),
+          \ 'start'    : g:ktextobjects[a:filetype].start,
+          \ 'middle'   : get(g:ktextobjects[a:filetype], 'middle', default.middle),
+          \ 'end'      : g:ktextobjects[a:filetype].end,
+          \ 'allmap'   : get(g:ktextobjects[a:filetype], 'allmap', default.allmap),
+          \ 'innermap' : get(g:ktextobjects[a:filetype], 'innermap', default.innermap)}
+  else
+    return get(s:vars, a:filetype, {})
+  endif
+endfunction "}}}2
 
-  " Set b:undo_ftplugin
+function! ktextobjects#init() "{{{2
+  " Get dictionary
+  let b:ktextobjects_dict = ktextobjects#get_dict(&filetype)
+  if b:ktextobjects_dict == {}
+    " Filetype not supported, erase any trace of our presence
+    unlet b:ktextobjects_dict
+    return
+  endif
+  "echom string(b:ktextobjects_dict)
+
+  " Set b:undo_ftplugin {{{3
   let s:undo_ftplugin =
-        \ 'sil! ounmap <buffer> ak|sil! ounmap <buffer> ik|'.
-        \ 'sil! vunmap <buffer> ak|sil! vunmap <buffer> ik'.
-        \ 'sil! unlet b:kto'
+        \ 'sil! ounmap <buffer> '.
+        \ b:ktextobjects_dict.allmap.'|'.
+        \ 'sil! ounmap <buffer> '.
+        \ b:ktextobjects_dict.innermap.'|'.
+        \ 'sil! vunmap <buffer> '.
+        \ b:ktextobjects_dict.allmap.'|'.
+        \ 'sil! vunmap <buffer> '.
+        \ b:ktextobjects_dict.innermap.'|'.
+        \ 'sil! unlet b:ktextobjects_dict'
   if exists('b:undo_ftplugin') && b:undo_ftplugin !~ 'vunmap <buffer> ar'
     if b:undo_ftplugin =~ '^\s*$'
       let b:undo_ftplugin = s:undo_ftplugin
@@ -59,51 +164,35 @@ function! ktextobjects#init() "{{{1
     let b:undo_ftplugin = s:undo_ftplugin
   endif
 
-  " Create <Plug>mappings
-  onoremap <silent> <buffer> <expr> <Plug>KeywordTextObjectsAll
-        \ ktextobjects#TextObjectsAll(0)
-
-  onoremap <silent> <buffer> <expr> <Plug>KeywordTextObjectsInner
-        \ ktextobjects#TextObjectsInner(0)
-
-  vnoremap <silent> <buffer> <Plug>KeywordTextObjectsAll
-        \ :call ktextobjects#TextObjectsAll(1)<CR><Esc>gv
-
-  vnoremap <silent> <buffer> <Plug>KeywordTextObjectsInner
-        \ :call ktextobjects#TextObjectsInner(1)<CR><Esc>gv
-
-  " Create useful mappings
-  if !exists('testing_KeywordTextObjects')
-    " Be nice with existing mappings
-
-    if !hasmapto('<Plug>KeywordTextObjectsAll', 'o')
-      omap <unique> <buffer> ak <Plug>KeywordTextObjectsAll
-    endif
-
-    if !hasmapto('<Plug>KeywordTextObjectsInner', 'o')
-      omap <unique> <buffer> ik <Plug>KeywordTextObjectsInner
-    endif
-
-    if !hasmapto('<Plug>KeywordTextObjectsAll', 'v')
-      vmap <unique> <buffer> ak <Plug>KeywordTextObjectsAll
-    endif
-
-    if !hasmapto('<Plug>KeywordTextObjectsInner', 'v')
-      vmap <unique> <buffer> ik <Plug>KeywordTextObjectsInner
-    endif
-  else
-    " Unless we are testing, be merciless in this case
-    silent! ounmap <buffer> ak
-    silent! ounmap <buffer> ik
-    silent! vunmap <buffer> ak
-    silent! vunmap <buffer> ik
-    omap <buffer> ak <Plug>KeywordTextObjectsAll
-    omap <buffer> ik <Plug>KeywordTextObjectsInner
-    vmap <buffer> ak <Plug>KeywordTextObjectsAll
-    vmap <buffer> ik <Plug>KeywordTextObjectsInner
-  endif
-
-endfunction "}}}1
+  " Mappings: {{{3
+  for map in [b:ktextobjects_dict.allmap, b:ktextobjects_dict.innermap]
+    " Create <Plug>mappings
+    exec 'onoremap <silent> <buffer> <expr> '.
+          \ '<Plug>KeywordTextObjects'.
+          \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').' '.
+          \ 'ktextobjects#TextObjects'.
+          \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').'(0)'
+    exec 'vnoremap <silent> <buffer> '.
+          \ '<Plug>KeywordTextObjects'.
+          \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').' '.
+          \ ':call ktextobjects#TextObjects'.
+          \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').'(1)<CR><Esc>gv'
+    for mode in ['o', 'v']
+    " Create useful mappings
+      if !exists('g:testing_KeywordTextObjects')
+        " Be nice with existing mappings
+        if !hasmapto('<Plug>KeywordTextObjects_'.map, mode)
+          exec mode.'map <unique> <buffer> '.map.' <Plug>KeywordTextObjects'.
+                \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner')
+        endif
+      else
+        exec 'silent! '.mode.'unmap <buffer> '.map
+        exec mode.'map <buffer> '.map.' <Plug>KeywordTextObjects'.
+              \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner')
+      endif
+    endfor
+  endfor
+endfunction "}}}2
 
 function! ktextobjects#TextObjectsAll(visual) range "{{{2
   let lastline      = line('$')
@@ -117,8 +206,8 @@ function! ktextobjects#TextObjectsAll(visual) range "{{{2
   let passes  = 0
 
   let match_both_outer = (
-        \ s:Match(t_start[0] - 1, b:kto.start_p) &&
-        \ s:Match(t_end[0] + 1, b:kto.end_p))
+        \ s:Match(t_start[0] - 1, b:ktextobjects_dict.start) &&
+        \ s:Match(t_end[0] + 1, b:ktextobjects_dict.end))
   while  count1 > 0 &&
         \ (!(count1 > 1) || (t_start[0] - 1 > 1 && t_end[0] + 1 < lastline))
     let passes  += 1
@@ -187,7 +276,7 @@ function! ktextobjects#TextObjectsInner(visual, ...) range "{{{2
   endif
   let line_eof    = line('$')
   let current     = {'start': [firstline,0], 'end': [lastline,0]}
-  let middle_p    = b:kto.middle_p
+  let middle_p    = b:ktextobjects_dict.middle
   let l:count     = 0
   let d_start     = 0
   let d_end       = 0
@@ -222,9 +311,9 @@ function! ktextobjects#TextObjectsInner(visual, ...) range "{{{2
           \         && original[1][1] >= len(getline(getpos("'>")[1])) + 1))
 
       " Determine what is selected
-      if getline(firstline - 1) =~ b:kto.middle_p ||
-            \ getline(lastline + 1) =~ b:kto.middle_p
-        " The line over and/or under matches a b:kto.middle_p
+      if getline(firstline - 1) =~ b:ktextobjects_dict.middle ||
+            \ getline(lastline + 1) =~ b:ktextobjects_dict.middle
+        " The line over and/or under matches a b:ktextobjects_dict.middle
         if !is_block
           " It is repeated with an inner middle block
           let is_repeat = 4
@@ -287,6 +376,9 @@ function! ktextobjects#TextObjectsInner(visual, ...) range "{{{2
 endfunction "}}}2
 
 function! s:FindTextObject(first, last, middle, ...) "{{{2
+  " Default flags
+  let flags = 'Wn'
+
   if a:0
     let l:count = a:1 + 1
   else
@@ -303,34 +395,34 @@ function! s:FindTextObject(first, last, middle, ...) "{{{2
 
   " searchpair() starts looking at the cursor position. Find out where that
   " should be. Also determine if the current line should be searched.
-  if s:Match(a:first[0], b:kto.end_p)
+  if s:Match(a:first[0], b:ktextobjects_dict.end)
     let spos   = 1
-    let sflags = b:kto.flags.'b'
+    let sflags = flags.'b'
   else
     let spos   = 9999
-    let sflags = b:kto.flags.'bc'
+    let sflags = flags.'bc'
   endif
 
   " Let's see where they are
   call cursor(a:first[0], spos)
-  let first.start  = searchpairpos(b:kto.start_p,a:middle,b:kto.end_p,sflags,b:kto.skip_e)
+  let first.start  = searchpairpos(b:ktextobjects_dict.start,a:middle,b:ktextobjects_dict.end,sflags,b:ktextobjects_dict.skip)
 
   if a:middle == ''
-    let s_match = s:Match(a:first[0], b:kto.start_p)
+    let s_match = s:Match(a:first[0], b:ktextobjects_dict.start)
   else
-    let s_match = s:Match(a:first[0], b:kto.start_p) || s:Match(a:first[0], a:middle)
+    let s_match = s:Match(a:first[0], b:ktextobjects_dict.start) || s:Match(a:first[0], a:middle)
   endif
   if s_match
     let epos   = 9999
-    let eflags = b:kto.flags
+    let eflags = flags
   else
     let epos   = 1
-    let eflags = b:kto.flags.'c'
+    let eflags = flags.'c'
   endif
 
   " Let's see where they are
   call cursor(a:first[0], epos)
-  let first.end    = searchpairpos(b:kto.start_p,a:middle,b:kto.end_p,eflags,b:kto.skip_e)
+  let first.end    = searchpairpos(b:ktextobjects_dict.start,a:middle,b:ktextobjects_dict.end,eflags,b:ktextobjects_dict.skip)
 
   "echom 'First : '.string([first.start, first.end])
   if a:first == a:last
@@ -342,12 +434,13 @@ function! s:FindTextObject(first, last, middle, ...) "{{{2
     let first.range  = first.end[0] - first.start[0]
     let last.range   = last.end[0] - last.start[0]
     if first.end[0] <= last.start[0] &&
-          \ (getline(first.end[0])  =~ b:kto.middle_p && first.range > 0) &&
-          \ (getline(last.start[0]) =~ b:kto.middle_p && last.range  > 0)
+          \ (getline(first.end[0])  =~ b:ktextobjects_dict.middle &&
+          \   first.range > 0) &&
+          \ (getline(last.start[0]) =~ b:ktextobjects_dict.middle &&
+          \   last.range  > 0)
       " Looks like a middle inner match, start over without looking for
-      " b:kto.middle_p
+      " b:ktextobjects_dict.middle
       let result = s:FindTextObject(a:first, a:last, '', 1)
-
     else
       " Now, decide what to return
       if first.range > last.range
@@ -382,18 +475,16 @@ function! s:FindTextObject(first, last, middle, ...) "{{{2
           let result = [[0,0],[0,0]]
         endif
       endif
-
     endif
   endif
   "echom 'Result: '.string(result) . ', first: ' . string(first) . ', last' .
-        \ string(last). ', spos: ' . spos . ', sflags: ' . sflags . ', epos: ' . epos . ', eflags: ' . eflags. '. middle_p: '.a:middle
+  "      \ string(last). ', spos: ' . spos . ', sflags: ' . sflags . ', epos: ' . epos . ', eflags: ' . eflags. '. middle_p: '.a:middle
   return result
-
 endfunction "}}}2
 
 function! s:Match(line, part) " {{{2
   call cursor(a:line, 1)
-  let result = search(a:part, 'cW', a:line) > 0 && !eval(b:kto.skip_e)
+  let result = search(a:part, 'cW', a:line) > 0 && !eval(b:ktextobjects_dict.skip)
   "echom result
   return result
 endfunction " }}}2

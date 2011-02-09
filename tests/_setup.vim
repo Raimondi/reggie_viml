@@ -3,6 +3,7 @@
 let &runtimepath = expand('<sfile>:p:h:h:h').'/runVimTests,'.&rtp
 let &runtimepath = expand('<sfile>:p:h:h:h').'/vimtap,'.&rtp
 let &runtimepath = expand('<sfile>:p:h:h').','.&rtp
+filetype on
 let maps =
       \ {'va': 'ak',
       \  'vi': 'ik',
