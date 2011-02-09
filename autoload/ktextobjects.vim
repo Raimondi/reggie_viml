@@ -115,8 +115,7 @@ let s:vars.ruby.end   = '\C\v^\s*\zs<end>'
 " }}}1
 
 " Functions {{{1
-
-function! ktextobjects#get_dict(filetype) " {{{2
+function! s:get_dict(filetype) " {{{2
   if exists('g:ktextobjects.'.a:filetype)
     if !exists('g:ktextobjects.'.a:filetype.'.start')
             \ || !exists('g:ktextobjects.'.a:filetype.'.end')
@@ -137,7 +136,7 @@ endfunction "}}}2
 
 function! ktextobjects#init() "{{{2
   " Get dictionary
-  let b:ktextobjects_dict = ktextobjects#get_dict(&filetype)
+  let b:ktextobjects_dict = s:get_dict(&filetype)
   if b:ktextobjects_dict == {}
     " Filetype not supported, erase any trace of our presence
     unlet b:ktextobjects_dict
@@ -172,12 +171,12 @@ function! ktextobjects#init() "{{{2
     exec 'onoremap <silent> <buffer> <expr> '.
           \ '<Plug>KeywordTextObjects'.
           \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').' '.
-          \ 'ktextobjects#TextObjects'.
+          \ '<SID>TextObjects'.
           \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').'(0)'
     exec 'vnoremap <silent> <buffer> '.
           \ '<Plug>KeywordTextObjects'.
           \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').' '.
-          \ ':call ktextobjects#TextObjects'.
+          \ ':call <SID>TextObjects'.
           \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').'(1)<CR><Esc>gv'
     for mode in ['o', 'v']
     " Create useful mappings
@@ -196,7 +195,7 @@ function! ktextobjects#init() "{{{2
   endfor
 endfunction "}}}2
 
-function! ktextobjects#TextObjectsAll(visual) range "{{{2
+function! s:TextObjectsAll(visual) range "{{{2
   let lastline      = line('$')
   let start         = [0,0]
   let middle_p      = ''
@@ -263,7 +262,7 @@ function! ktextobjects#TextObjectsAll(visual) range "{{{2
 
 endfunction " }}}2
 
-function! ktextobjects#TextObjectsInner(visual, ...) range "{{{2
+function! s:TextObjectsInner(visual, ...) range "{{{2
   " Recursing?
   if a:0
     let firstline = a:1
@@ -354,7 +353,7 @@ function! ktextobjects#TextObjectsInner(visual, ...) range "{{{2
   "echom 'Current: '.string(current).', count1: '.count1
   if count1 > 1
     " Let's recurse
-    let current = ktextobjects#TextObjectsInner(a:visual, current.start[0] + 1, current.end[0] - 1, count1)
+    let current = s:TextObjectsInner(a:visual, current.start[0] + 1, current.end[0] - 1, count1)
   endif
   if a:0
     return current
