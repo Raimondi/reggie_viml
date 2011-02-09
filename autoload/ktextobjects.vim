@@ -154,6 +154,10 @@ function! ktextobjects#init() "{{{2
         \ b:ktextobjects_dict.allmap.'|'.
         \ 'sil! vunmap <buffer> '.
         \ b:ktextobjects_dict.innermap.'|'.
+        \ 'sil! ounmap <buffer> <Plug>KeywordTextObjectsAll|'.
+        \ 'sil! ounmap <buffer> <Plug>KeywordTextObjectsInner|'.
+        \ 'sil! vunmap <buffer> <Plug>KeywordTextObjectsAll|'.
+        \ 'sil! vunmap <buffer> <Plug>KeywordTextObjectsInner|'.
         \ 'sil! unlet b:ktextobjects_dict'
   if exists('b:undo_ftplugin') && b:undo_ftplugin !~ 'vunmap <buffer> ar'
     if b:undo_ftplugin =~ '^\s*$'
