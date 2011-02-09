@@ -17,6 +17,31 @@
 " Pending:     - Consider continued lines for inner text objects.
 " ============================================================================
 
+" Load guard {{{1
+if !exists('loaded_KeywordTextObjects') || exists('testing_KeywordTextObjects')
+  echom '----Loaded on: '.strftime("%Y %b %d %X")
+
+  function! Test(first, last, test,...)
+    if a:test == 1
+      return s:Match(a:first, b:ktextobjects_dict.start).', '.s:Match(a:first, b:ktextobjects_dict.middle).', '.s:Match(a:first, b:ktextobjects_dict.end)
+    elseif a:test == 2
+      return s:FindTextObject([a:first,0], [a:last,0], b:ktextobjects_dict.middle)
+    elseif a:test == 3
+      return searchpairpos(b:ktextobjects_dict.start, b:ktextobjects_dict.middle, b:ktextobjects_dict.end, a:1, b:ktextobjects_dict.skip)
+    elseif a:test == 4
+      return match(getline('.'), 'bWn')
+    elseif a:test == 5
+      return searchpos(b:ktextobjects_dict.start,'bn')
+    else
+      throw 'Ooops!'
+    endif
+  endfunction
+  command! -bar -range -buffer -nargs=+ Test echom string(Test(<line1>, <line2>, <f-args>))
+else
+  finish
+endif
+let loaded_KeywordTextObjects = '0.1a' "}}}1
+
 " Variables {{{1
 " One Dict to rule them all, One Dict to find them,
 " One Dict to bring them all and in the darkness unlet them...
@@ -90,29 +115,6 @@ let s:vars.ruby.end   = '\C\v^\s*\zs<end>'
 " }}}1
 
 " Functions {{{1
-" Load guard {{{2
-if exists('testing_KeywordTextObjects')
-  echom '----Loaded on: '.strftime("%Y %b %d %X")
-
-  function! Test(first, last, test,...)
-    if a:test == 1
-      return s:Match(a:first, b:ktextobjects_dict.start).', '.s:Match(a:first, b:ktextobjects_dict.middle).', '.s:Match(a:first, b:ktextobjects_dict.end)
-    elseif a:test == 2
-      return s:FindTextObject([a:first,0], [a:last,0], b:ktextobjects_dict.middle)
-    elseif a:test == 3
-      return searchpairpos(b:ktextobjects_dict.start, b:ktextobjects_dict.middle, b:ktextobjects_dict.end, a:1, b:ktextobjects_dict.skip)
-    elseif a:test == 4
-      return match(getline('.'), 'bWn')
-    elseif a:test == 5
-      return searchpos(b:ktextobjects_dict.start,'bn')
-    else
-      throw 'Ooops!'
-    endif
-  endfunction
-  command! -bar -range -buffer -nargs=+ Test echom string(Test(<line1>, <line2>, <f-args>))
-endif
-let loaded_KeywordTextObjects = '0.1a'
- "}}}2
 
 function! ktextobjects#get_dict(filetype) " {{{2
   if exists('g:ktextobjects.'.a:filetype)
