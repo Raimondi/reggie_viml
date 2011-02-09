@@ -115,6 +115,8 @@ ruby_oi019.vim
 # Generic {{{1
 # Check for mappings with filetype plugin on
 vim_ge001.vim
+# Check for behaviour of gU
+vim_ge002.vim
 
 # - Visual All {{{1
 # Sample 2, go to 'if' and :norm vard, repeat on 'endif' and inside the block.

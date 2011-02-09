@@ -172,11 +172,12 @@ function! ktextobjects#init() "{{{2
   " Mappings: {{{3
   for map in [b:ktextobjects_dict.allmap, b:ktextobjects_dict.innermap]
     " Create <Plug>mappings
-    exec 'onoremap <silent> <buffer> <expr> '.
+    exec 'onoremap <silent> <buffer> '.
           \ '<Plug>KeywordTextObjects'.
           \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').' '.
-          \ '<SID>TextObjects'.
-          \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').'(0)'
+          \ '<Esc>:call <SID>TextObjects'.
+          \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').
+          \ '(0)<CR>'
     exec 'vnoremap <silent> <buffer> '.
           \ '<Plug>KeywordTextObjects'.
           \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').' '.
@@ -199,7 +200,7 @@ function! ktextobjects#init() "{{{2
   endfor
 endfunction "}}}2
 
-function! s:TextObjectsAll(visual) range "{{{2
+function! s:TextObjectsAll(visual,...) range "{{{2
   let lastline      = line('$')
   let start         = [0,0]
   let middle_p      = ''
@@ -250,17 +251,18 @@ function! s:TextObjectsAll(visual) range "{{{2
       "echom getline(start[0])[:start[1] - 2]
       if start[1] <= 1 || getline(start[0])[:start[1] - 2] =~ '^\s*$'
         " Delete whole lines
-        let to_eol   = '$'
+        let to_eol   = v:operator =~? '^gu$' ? '$h' : '$'
         let from_bol = '0'
       else
         " Don't delete text behind start of block and leave one <CR>
         let to_eol   = '$h'
         let from_bol = ''
       endif
-      return ':call cursor('.string(start).')|exec "normal! '.from_bol.'v'.end[0]."G".to_eol."\"\<CR>"
+      call cursor(start)
+      exec 'normal! '.from_bol.v:operator.':normal! v'.end[0]."G".to_eol."\<CR>"
     else
       " No pair found, do nothing
-      return "\<Esc>"
+      "return "\<Esc>"
     endif
   endif
 
@@ -370,12 +372,17 @@ function! s:TextObjectsInner(visual, ...) range "{{{2
     endif
   else
     if current.end[0] >= current.start[0] && current.start[0] >= 1 && current.end[0] >= 1 && current.end[0] - current.start[0] > 1
+      if v:operator =~? '^gu$'
+        let to_end = '$h'
+      else
+        let to_end = '$'
+      endif
       " Do operator pending magic
-      return ':exec "normal! '.(current.start[0] + 1)
-            \ .'G0v'.(current.end[0] - 1)."G$\"\<CR>"
+      exec 'normal! '.(current.start[0] + 1)
+            \ .'G0'.v:operator.':normal! v'.(current.end[0] - 1)."G".to_end."\<CR>"
     else
       " No pair found, do nothing
-      return "\<Esc>"
+      "return "\<Esc>"
     endif
   endif
 endfunction "}}}2
