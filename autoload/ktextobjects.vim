@@ -146,20 +146,20 @@ function! ktextobjects#init() "{{{2
 
   " Set b:undo_ftplugin {{{3
   let s:undo_ftplugin =
-        \ 'sil! ounmap <buffer> '.
-        \ b:ktextobjects_dict.allmap.'|'.
-        \ 'sil! ounmap <buffer> '.
-        \ b:ktextobjects_dict.innermap.'|'.
-        \ 'sil! vunmap <buffer> '.
-        \ b:ktextobjects_dict.allmap.'|'.
-        \ 'sil! vunmap <buffer> '.
-        \ b:ktextobjects_dict.innermap.'|'.
-        \ 'sil! ounmap <buffer> <Plug>KeywordTextObjectsAll|'.
-        \ 'sil! ounmap <buffer> <Plug>KeywordTextObjectsInner|'.
-        \ 'sil! vunmap <buffer> <Plug>KeywordTextObjectsAll|'.
-        \ 'sil! vunmap <buffer> <Plug>KeywordTextObjectsInner|'.
+        \ 'sil! ounmap <buffer> '                               .
+        \ b:ktextobjects_dict.allmap.'|'                        .
+        \ 'sil! ounmap <buffer> '                               .
+        \ b:ktextobjects_dict.innermap.'|'                      .
+        \ 'sil! vunmap <buffer> '                               .
+        \ b:ktextobjects_dict.allmap.'|'                        .
+        \ 'sil! vunmap <buffer> '                               .
+        \ b:ktextobjects_dict.innermap.'|'                      .
+        \ 'sil! ounmap <buffer> <Plug>KeywordTextObjectsAll|'   .
+        \ 'sil! ounmap <buffer> <Plug>KeywordTextObjectsInner|' .
+        \ 'sil! vunmap <buffer> <Plug>KeywordTextObjectsAll|'   .
+        \ 'sil! vunmap <buffer> <Plug>KeywordTextObjectsInner|' .
         \ 'sil! unlet b:ktextobjects_dict'
-  if exists('b:undo_ftplugin') && b:undo_ftplugin !~ 'vunmap <buffer> ar'
+  if exists('b:undo_ftplugin') && b:undo_ftplugin !~ 'unlet b:ktextobjects'
     if b:undo_ftplugin =~ '^\s*$'
       let b:undo_ftplugin = s:undo_ftplugin
     else
