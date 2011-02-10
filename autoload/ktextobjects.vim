@@ -201,22 +201,29 @@ function! ktextobjects#init() "{{{2
 endfunction "}}}2
 
 function! s:TextObjectsAll(visual,...) range "{{{2
-  let lastline      = line('$')
+  " Recursing?
+  if a:0
+    let firstline = a:1
+    let lastline  = a:2
+    let count1    = a:3 - 1
+  else
+    let firstline = a:firstline
+    let lastline  = a:lastline
+    let count1    = v:count1 < 1 ? 1 : v:count1
+  endif
+  echom 'count1: '.count1.', firstline: '.firstline.', lastline: '.lastline
   let start         = [0,0]
-  let middle_p      = ''
   let end           = [-1,0]
-  let count1        = v:count1 < 1 ? 1 : v:count1
+  let middle_p      = ''
 
-  let t_start = [a:firstline + 1, 0]
-  let t_end   = [a:lastline  - 1, 0]
-  let passes  = 0
+  let t_start = [firstline + 1, 0]
+  let t_end   = [lastline - 1, 0]
 
+  echom 'Initial t_start;t_end: '.string(t_start).';'.string(t_end)
   let match_both_outer = (
         \ s:Match(t_start[0] - 1, b:ktextobjects_dict.start) &&
         \ s:Match(t_end[0] + 1, b:ktextobjects_dict.end))
-  while  count1 > 0 &&
-        \ (!(count1 > 1) || (t_start[0] - 1 > 1 && t_end[0] + 1 < lastline))
-    let passes  += 1
+  for passes in [1,2]
 
     " Let's get some luv
     let [t_start, t_end] = s:FindTextObject([t_start[0] - 1, 0], [t_end[0] + 1, 0], middle_p)
@@ -225,17 +232,25 @@ function! s:TextObjectsAll(visual,...) range "{{{2
     if t_start[0] > 0 && t_end[0] > 0
       let start = t_start
       let end   = t_end
+      echom 'start;end: '.string(start).';'.string(end).', passes: '.passes
     else
       break
     endif
 
-    " Repeat if necessary
-    if match_both_outer && passes == 1 &&
-          \ start[0] == a:firstline && end[0] == a:lastline
-      continue
+    " Repeat only if necessary
+    if !(match_both_outer && passes == 1 &&
+          \ start[0] == firstline && end[0] == lastline)
+      break
     endif
-    let count1  -= 1
-  endwhile
+  endfor
+
+  if count1 > 1 
+    let [start, end] = s:TextObjectsAll(a:visual, start[0], end[0], count1)
+  endif
+  
+  if a:0
+    return [start, end]
+  endif
 
   if a:visual
     if end[0] >= start[0] && start[0] >= 1 && end[0] >= 1
@@ -243,7 +258,7 @@ function! s:TextObjectsAll(visual,...) range "{{{2
       exec "normal! \<Esc>"
       call cursor(start)
       exec "normal! v".end[0]."G$h"
-      "echom string(start).';'.string(end).':'.passes
+      "echom 'start;end: '.string(start).';'.string(end).', passes: '.passes
     endif
   else
     if end[0] >= start[0] && start[0] >= 1 && end[0] >= 1
@@ -282,9 +297,9 @@ function! s:TextObjectsInner(visual, ...) range "{{{2
     let count1    = v:count1 < 1 ? 1 : v:count1
     let original  = [getpos("'<")[1:2], getpos("'>")[1:2]]
   endif
-  let line_eof    = line('$')
   let current     = {'start': [firstline,0], 'end': [lastline,0]}
   let middle_p    = b:ktextobjects_dict.middle
+  let line_eof      = line('$')
   let l:count     = 0
   let d_start     = 0
   let d_end       = 0
@@ -402,7 +417,7 @@ function! s:FindTextObject(first, last, middle, ...) "{{{2
   if a:first[0] > a:last[0]
     throw 'Muy mal... a:first > a:last'
   endif
-  "echom 'Range : '.string([a:first, a:last])
+  echom 'Range : '.string([a:first, a:last])
 
   let first = {'start':[0,0], 'end':[0,0], 'range':0}
   let last  = {'start':[0,0], 'end':[0,0], 'range':0}
