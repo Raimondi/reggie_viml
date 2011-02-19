@@ -24,6 +24,7 @@ if this_line == too_big &&
       endfor
       undo
       redo
+    endtry
   endwhile
   echom 9
   let true = 1

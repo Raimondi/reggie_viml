@@ -15,9 +15,17 @@
 "              unexpected way.
 "
 " Pending:     - Consider continued lines for inner text objects.
+"              - Use separate b:variables for each custom value.
+"              - Allow matching on the same line.
 " ============================================================================
 
 " Load guard {{{1
+if &cp
+  finish
+endif
+let save_cpo = &cpo
+set cpo&vim
+
 if !exists('loaded_KeywordTextObjects') || exists('testing_KeywordTextObjects')
   echom '----Loaded on: '.strftime("%Y %b %d %X")
 
@@ -116,33 +124,35 @@ let s:vars.ruby.end   = '\C\v^\s*\zs<end>'
 
 " Functions {{{1
 function! s:get_dict(filetype) " {{{2
-  if exists('g:ktextobjects.'.a:filetype)
-    if !exists('g:ktextobjects.'.a:filetype.'.start')
-            \ || !exists('g:ktextobjects.'.a:filetype.'.end')
-      return get(s:vars, a:filetype, {})
-    endif
-    let default = get(s:vars, a:filetype, {'skip': '0', 'middle': '', 'allmap': 'ak', 'innermap': 'ik'})
+  if exists('b:ktextobjects_start') && exists('b:ktextobjects_end')
+    let default = get(s:vars, a:filetype, {'skip': '0', 'middle': '', 'allmap': 'k', 'innermap': 'k'})
     return {
-          \ 'skip'     : get(g:ktextobjects[a:filetype], 'skip', default.skip),
-          \ 'start'    : g:ktextobjects[a:filetype].start,
-          \ 'middle'   : get(g:ktextobjects[a:filetype], 'middle', default.middle),
-          \ 'end'      : g:ktextobjects[a:filetype].end,
-          \ 'allmap'   : get(g:ktextobjects[a:filetype], 'allmap', default.allmap),
-          \ 'innermap' : get(g:ktextobjects[a:filetype], 'innermap', default.innermap)}
+          \ 'skip'     : get(b:, 'b:ktextobjects_skip', default.skip),
+          \ 'start'    : b:ktextobjects_start,
+          \ 'middle'   : get(b:, 'b:ktextobjects_middle', default.middle),
+          \ 'end'      : b:ktextobjects_end,
+          \ 'allmap'   : 'a'.get(b:, 'b:ktextobjects_map', default.allmap),
+          \ 'innermap' : 'i'.get(b:, 'b:ktextobjects_map', default.innermap)}
   else
     return get(s:vars, a:filetype, {})
   endif
 endfunction "}}}2
 
-function! ktextobjects#init() "{{{2
+function! ktextobjects#init(...) "{{{2
+  call s:info('INIT', 'Start: '.string(a:000))
+  if a:0
+    let filetype = a:1
+  else
+    let filetype = &filetype
+  endif
   " Get dictionary
-  let b:ktextobjects_dict = s:get_dict(&filetype)
+  let b:ktextobjects_dict = s:get_dict(filetype)
   if b:ktextobjects_dict == {}
     " Filetype not supported, erase any trace of our presence
     unlet b:ktextobjects_dict
     return
   endif
-  "echom string(b:ktextobjects_dict)
+  call s:dbg('INIT', string(b:ktextobjects_dict))
 
   " Set b:undo_ftplugin {{{3
   let s:undo_ftplugin =
@@ -172,12 +182,18 @@ function! ktextobjects#init() "{{{2
   " Mappings: {{{3
   for map in [b:ktextobjects_dict.allmap, b:ktextobjects_dict.innermap]
     " Create <Plug>mappings
-    exec 'onoremap <silent> <buffer> '.
+    "exec 'onoremap <silent> <buffer> '.
+    "      \ '<Plug>KeywordTextObjects'.
+    "      \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').' '.
+    "      \ ':<C-U>call <SID>TextObjects'.
+    "      \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').
+    "      \ '(0)<CR>'
+    exec 'onoremap <silent> <buffer> <expr>'.
           \ '<Plug>KeywordTextObjects'.
           \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').' '.
-          \ '<Esc>:call <SID>TextObjects'.
-          \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').
-          \ '(0)<CR>'
+          \ '<SID>TextObjects'.
+          \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').'(0)'
+
     exec 'vnoremap <silent> <buffer> '.
           \ '<Plug>KeywordTextObjects'.
           \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').' '.
@@ -201,6 +217,7 @@ function! ktextobjects#init() "{{{2
 endfunction "}}}2
 
 function! s:TextObjectsAll(visual,...) range "{{{2
+  call s:info('TOA', 'Start: '.a:visual.','.string(a:000))
   " Recursing?
   if a:0
     let firstline = a:1
@@ -209,9 +226,10 @@ function! s:TextObjectsAll(visual,...) range "{{{2
   else
     let firstline = a:firstline
     let lastline  = a:lastline
-    let count1    = v:count1 < 1 ? 1 : v:count1
+    let count1    = v:count1
+    "let count1    = v:count1 < 1 ? 1 : v:count1
   endif
-  echom 'count1: '.count1.', firstline: '.firstline.', lastline: '.lastline
+  call s:dbg('TOA', 'count1: '.count1.', firstline: '.firstline.', lastline: '.lastline)
   let start         = [0,0]
   let end           = [-1,0]
   let middle_p      = ''
@@ -219,7 +237,7 @@ function! s:TextObjectsAll(visual,...) range "{{{2
   let t_start = [firstline + 1, 0]
   let t_end   = [lastline - 1, 0]
 
-  echom 'Initial t_start;t_end: '.string(t_start).';'.string(t_end)
+  call s:deepdbg('TOA', 'Initial t_start;t_end: '.string(t_start).';'.string(t_end))
   let match_both_outer = (
         \ s:Match(t_start[0] - 1, b:ktextobjects_dict.start) &&
         \ s:Match(t_end[0] + 1, b:ktextobjects_dict.end))
@@ -228,11 +246,11 @@ function! s:TextObjectsAll(visual,...) range "{{{2
     " Let's get some luv
     let [t_start, t_end] = s:FindTextObject([t_start[0] - 1, 0], [t_end[0] + 1, 0], middle_p)
 
-    "echom string(t_start).';'.string(t_end).':'.passes
+    call s:dbg('TOA', string(t_start).';'.string(t_end).':'.passes)
     if t_start[0] > 0 && t_end[0] > 0
       let start = t_start
       let end   = t_end
-      echom 'start;end: '.string(start).';'.string(end).', passes: '.passes
+      call s:dbg('TOA', 'start;end: '.string(start).';'.string(end).', passes: '.passes)
     else
       break
     endif
@@ -244,26 +262,27 @@ function! s:TextObjectsAll(visual,...) range "{{{2
     endif
   endfor
 
-  if count1 > 1 
+  if count1 > 1
     let [start, end] = s:TextObjectsAll(a:visual, start[0], end[0], count1)
   endif
-  
+
   if a:0
     return [start, end]
   endif
 
+  call s:dbg('TOA', 'start;end: '.string(start).';'.string(end).', passes: '.passes)
   if a:visual
     if end[0] >= start[0] && start[0] >= 1 && end[0] >= 1
       " Do visual magic
       exec "normal! \<Esc>"
       call cursor(start)
       exec "normal! v".end[0]."G$h"
-      "echom 'start;end: '.string(start).';'.string(end).', passes: '.passes
+      call s:dbg('TOA', 'start;end: '.string(start).';'.string(end).', passes: '.passes)
     endif
   else
     if end[0] >= start[0] && start[0] >= 1 && end[0] >= 1
       " Do operator pending magic
-      "echom getline(start[0])[:start[1] - 2]
+      call s:dbg('TOA', getline(start[0])[:start[1] - 2])
       if start[1] <= 1 || getline(start[0])[:start[1] - 2] =~ '^\s*$'
         " Delete whole lines
         let to_eol   = v:operator =~? '^gu$' ? '$h' : '$'
@@ -273,22 +292,23 @@ function! s:TextObjectsAll(visual,...) range "{{{2
         let to_eol   = '$h'
         let from_bol = ''
       endif
-      call cursor(start)
-      exec 'normal! '.from_bol.v:operator.':normal! v'.end[0]."G".to_eol."\<CR>"
-      silent! call repeat#set(v:operator.b:ktextobjects_dict.allmap)
+      return ':call cursor('.string(start).')|exec "normal! '.from_bol.'v'.end[0]."G".to_eol."\"\<CR>:silent! call repeat#set(v:operator.b:ktextobjects_dict.allmap, ".count1.")\<CR>"
+
     else
       " No pair found, do nothing
-      "return "\<Esc>"
+      return "\<Esc>"
     endif
   endif
 
 endfunction " }}}2
 
 function! s:TextObjectsInner(visual, ...) range "{{{2
+  call s:info('TOI', 'Start: '.a:visual.','.(a:0 ? ','.join(a:000, ',') : '').')')
+
   " Recursing?
-  if a:0
-    let firstline = a:1
-    let lastline  = a:2
+  if a:0 " {{{
+    let firstline = a:1[0]
+    let lastline  = a:2[0]
     let count1    = a:3 - 1
     let original  = [[firstline, 1], [lastline, len(getline(lastline)) + 1]]
   else
@@ -296,89 +316,69 @@ function! s:TextObjectsInner(visual, ...) range "{{{2
     let lastline  = a:lastline
     let count1    = v:count1 < 1 ? 1 : v:count1
     let original  = [getpos("'<")[1:2], getpos("'>")[1:2]]
-  endif
+  endif " }}}
   let current     = {'start': [firstline,0], 'end': [lastline,0]}
   let middle_p    = b:ktextobjects_dict.middle
-  let line_eof      = line('$')
+  let line_eof    = line('$')
   let l:count     = 0
   let d_start     = 0
   let d_end       = 0
   let i           = 0
+  call s:dbg("TOI", "count1: ".count1.', v:count1: '.v:count1.', v:count: '.v:count)
 
   while i <= 2 && (current.start[0] + d_start) > 0 && (current.end[0] + d_end) <= line_eof
     let i += 1
     " Get a text object
     let [current.start, current.end] = s:FindTextObject(
           \ [current.start[0] + d_start, 0], [current.end[0] + d_end, 0], middle_p)
-    "echom 'Current: '.string(current).', count: '.i
+    call s:dbg('TOI', 'Inner loop Current: '.string(current).', count: '.i)
+
     " If it's null, stop looking
     if [current.start, current.end] == [[0,0],[0,0]]
       break
     endif
-    let is_block = 0
-    if [firstline, lastline] == [current.start[0], current.end[0]]
-      " The original selection's range is the same as the one from the text
-      " object.
-      " It is a whole block
-      let is_block = 1
-    endif
-    let is_repeat = 0
-    " Find out what to do {{{
-    " If:
-    " - Is visual? AND
-    "   - Is repeated? OR
-    "   - Is the selection a previously selected text block?
-    if a:visual
-          \ && (a:0
-          \     || (original[0][1] == 1
-          \         && original[1][1] >= len(getline(getpos("'>")[1])) + 1))
-
-      " Determine what is selected
-      if getline(firstline - 1) =~ b:ktextobjects_dict.middle ||
-            \ getline(lastline + 1) =~ b:ktextobjects_dict.middle
-        " The line over and/or under matches a b:ktextobjects_dict.middle
-        if !is_block
-          " It is repeated with an inner middle block
-          let is_repeat = 4
-          let middle_p = ''
-          let d_start  = 0
-          let d_end    = 0
-        else
-          " It is repeated with an inner middle block and a whole block
-          let is_repeat = 3
-          let middle_p = ''
-          let d_start  = -1
-          let d_end    = 1
-        endif
-      elseif [firstline - 1, lastline + 1] == [current.start[0], current.end[0]]
-        " The text object limits are just over and under the original
-        " selection
-        " It is repeated, with an inner block
-        let is_repeat = 2
-        let d_start  = -1
-        let d_end    = 1
-      elseif is_block
-        " It is repeated, with a whole block
-        let is_repeat = 1
-        let d_start  = -1
-        let d_end    = 1
-      endif
-    endif "}}}
-    "echom 'is_repeat: '.is_repeat.', is_block: '.is_block
-
-    if is_repeat == 0
-      " No need to loop
+    if a:0 && i == 2
       break
     endif
+    " Repeat? {{{
+    let is_repeat = s:is_repeat(firstline, lastline, current.start[0], current.end[0], a:visual, a:0, original)
+
+    if is_repeat == 4 || is_repeat == -2
+      " It is repeated with an inner middle block
+      let middle_p = ''
+      let d_start  = 0
+      let d_end    = 0
+    elseif is_repeat == 3
+      " It is repeated with an inner middle block and a whole block
+      let middle_p = ''
+      let d_start  = -1
+      let d_end    = 1
+    elseif is_repeat == 2 || is_repeat == -1
+      " The text object limits are just over and under the original
+      " selection
+      " It is repeated, with an inner block
+      let middle_p    = b:ktextobjects_dict.middle
+      let d_start  = -1
+      let d_end    = 1
+    elseif is_repeat == 1
+      " It is repeated, with a whole block
+      let middle_p    = b:ktextobjects_dict.middle
+      let d_start  = -1
+      let d_end    = 1
+    else
+      " No need to loop
+      break
+    endif "}}}
   endwhile
 
-  "echom 'Current: '.string(current).', count1: '.count1
-  if count1 > 1
+  if count1 > 1 && [current.start,current.end] != [[0,0],[0,0]] "{{{
     " Let's recurse
-    let current = s:TextObjectsInner(a:visual, current.start[0] + 1, current.end[0] - 1, count1)
+    let [current.start,current.end] = s:TextObjectsInner(a:visual, [current.start[0], 1], [current.end[0], 1], count1)
   endif
+
+  call s:dbg('TOI', 'Last Current: '.string(current).', count1: '.count1)
   if a:0
-    return current
+    return [current.start,current.end]
   endif
   if a:visual
     if current.end[0] >= current.start[0] && current.start[0] >= 1 && current.end[0] >= 1 && current.end[0] - current.start[0] > 1
@@ -394,17 +394,79 @@ function! s:TextObjectsInner(visual, ...) range "{{{2
         let to_end = '$'
       endif
       " Do operator pending magic
-      exec 'normal! '.(current.start[0] + 1)
-            \ .'G0'.v:operator.':normal! v'.(current.end[0] - 1)."G".to_end."\<CR>"
-      silent! call repeat#set(v:operator.b:ktextobjects_dict.innermap)
+      "exec 'normal! '.(current.start[0] + 1)
+      "      \ .'G0'.v:operator.':normal! v'.(current.end[0] - 1)."G".to_end."\<CR>"
+      "silent! call repeat#set(v:operator.b:ktextobjects_dict.innermap)
+      return ':exec "normal! '.(current.start[0] + 1).
+            \ 'G0v'.(current.end[0] - 1)."G".to_end."\"\<CR>".
+            \ ":silent! call repeat#set(v:operator.b:ktextobjects_dict.innermap, ".
+            \ count1.")\<CR>"
+
     else
       " No pair found, do nothing
-      "return "\<Esc>"
+      return "\<Esc>"
     endif
+  endif "}}}
+endfunction "}}}2
+
+function! s:is_repeat(firstl, lastl, cfirstl, clastl, visual, recursive, original) "{{{2
+  call s:info('IR', "is_repeat(".string(a:firstl).','.string(a:lastl).','.string(a:cfirstl).','.string(a:clastl).','.string(a:visual).','.string(a:recursive).','.string(a:original).')')
+  let is_block = 0
+  if [a:firstl, a:lastl] == [a:cfirstl, a:clastl] || a:recursive
+    " The original selection's range is the same as the one from the text
+    " object.
+    " It is a whole block
+    let is_block = 1
   endif
+  let is_repeat = 0
+  " If:
+  " - It's recursive OR
+  " - It's visual AND
+  "   - The selection is a previously selected text block
+  if a:recursive
+    " Determine what is selected {{{
+    if b:ktextobjects_dict.middle != '' &&
+          \(getline(a:firstl) =~ b:ktextobjects_dict.middle ||
+          \ getline(a:lastl) =~ b:ktextobjects_dict.middle)
+      " The line over and/or under matches a b:ktextobjects_dict.middle
+      let is_repeat = -2
+    else
+      " It is repeated, with a whole inner block
+      let is_repeat = -1
+    endif "}}}
+  elseif a:visual
+        \ && (a:original[0][1] == 1
+        \ && a:original[1][1] >= len(getline(getpos("'>")[1])) + 1)
+
+    " Determine what is selected "{{{
+    if b:ktextobjects_dict.middle != '' &&
+          \ (getline(a:firstl - 1) =~ b:ktextobjects_dict.middle ||
+          \ getline(a:lastl + 1) =~ b:ktextobjects_dict.middle)
+      " The line over and/or under matches a b:ktextobjects_dict.middle
+      if !is_block
+        " It is repeated with an inner middle block
+        let is_repeat = 4
+      else
+        " It is repeated with an inner middle block and a whole block
+        let is_repeat = 3
+      endif
+    elseif [a:firstl - 1, a:lastl + 1] == [a:cfirstl, a:clastl]
+      " The text object limits are just over and under the original
+      " selection
+      " It is repeated, with an inner block
+      let is_repeat = 2
+    elseif is_block
+      " It is repeated, with a whole block
+      let is_repeat = 1
+    endif "}}}
+  endif
+  call s:dbg('IR', 'is_repeat: '.is_repeat.', is_block: '.is_block)
+  return is_repeat
 endfunction "}}}2
 
 function! s:FindTextObject(first, last, middle, ...) "{{{2
+  call s:info('FTO', 'Start: '.string(a:first).','.string(a:last).','.string(a:middle).join(a:000))
+
   " Default flags
   let flags = 'Wn'
 
@@ -413,11 +475,11 @@ function! s:FindTextObject(first, last, middle, ...) "{{{2
   else
     let l:count = 1
   endif
-  "echom 'FTO count: '.l:count
+  call s:dbg('FTO', 'count: '.l:count)
   if a:first[0] > a:last[0]
-    throw 'Muy mal... a:first > a:last'
+    throw 'Muy mal... a:first ('.string(a:first).') > a:last ('.string(a:last).')'
   endif
-  echom 'Range : '.string([a:first, a:last])
+  call s:dbg('FTO', 'Range : '.string([a:first, a:last]))
 
   let first = {'start':[0,0], 'end':[0,0], 'range':0}
   let last  = {'start':[0,0], 'end':[0,0], 'range':0}
@@ -453,12 +515,12 @@ function! s:FindTextObject(first, last, middle, ...) "{{{2
   call cursor(a:first[0], epos)
   let first.end    = searchpairpos(b:ktextobjects_dict.start,a:middle,b:ktextobjects_dict.end,eflags,b:ktextobjects_dict.skip)
 
-  "echom 'First : '.string([first.start, first.end])
-  if a:first == a:last
+  call s:dbg('FTO', 'First : '.string([first.start, first.end]))
+  if a:first == a:last "{{{
     let result = [first.start, first.end]
   else
     let [last.start, last.end] = s:FindTextObject(a:last, a:last, a:middle, l:count)
-    "echom 'Last  : '.string([last.start, last.end])
+    call s:dbg('FTO', 'Last  : '.string([last.start, last.end]))
 
     let first.range  = first.end[0] - first.start[0]
     let last.range   = last.end[0] - last.start[0]
@@ -505,8 +567,9 @@ function! s:FindTextObject(first, last, middle, ...) "{{{2
         endif
       endif
     endif
-  endif
-  "echom 'Result: '.string(result) . ', first: ' . string(first) . ', last' .
+  endif "}}}
+  call s:dbg('FTO', 'Result: '.string(result))
+  "      \ . ', first: ' . string(first) . ', last' .
   "      \ string(last). ', spos: ' . spos . ', sflags: ' . sflags . ', epos: ' . epos . ', eflags: ' . eflags. '. middle_p: '.a:middle
   return result
 endfunction "}}}2
@@ -514,8 +577,45 @@ endfunction "}}}2
 function! s:Match(line, part) " {{{2
   call cursor(a:line, 1)
   let result = search(a:part, 'cW', a:line) > 0 && !eval(b:ktextobjects_dict.skip)
-  "echom result
+  call s:dbg('MA', result)
   return result
 endfunction " }}}2
 
+" Messages: {{{
+let s:verbose_quiet = 0
+let s:verbose_info  = 1
+let s:verbose_debug = 2
+let s:verbose_deep  = 3
+function! s:log(level, msg, scope) "{{{
+  if exists('g:ktextobjects_verbosity')
+    let s:verbosity = g:ktextobjects_verbosity
+  else
+    let s:default_verbosity = s:verbose_quiet
+    let s:verbosity = s:default_verbosity
+  endif
+
+  if exists('g:testing_KeywordTextObjects') && type(g:testing_KeywordTextObjects) == type([]) && len(g:testing_KeywordTextObjects) > 0
+    let scope = index(g:testing_KeywordTextObjects, a:scope) >= 0
+  else
+    let scope = 1
+  endif
+
+  if a:level <= s:verbosity && scope
+    echomsg a:msg
+  endif
+endfunction "}}}
+
+function! s:info(scope, msg)
+  call s:log(s:verbose_info, 'info: ' . a:scope . ' - '. a:msg, a:scope)
+endfunction
+
+function! s:dbg(scope, msg)
+  call s:log(s:verbose_debug, 'dbg : ' . a:scope . ' - '. a:msg, a:scope)
+endfunction
+
+function! s:deepdbg(scope, msg)
+  call s:log(s:verbose_deep, 'deep: ' . a:scope . ' - '. a:msg, a:scope)
+endfunction
+"}}}
+let &cpo = save_cpo
 " vim: set et sw=2 sts=2 tw=78: {{{1

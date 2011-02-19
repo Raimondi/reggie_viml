@@ -17,39 +17,6 @@
 " Pending:     - Consider continued lines for inner text objects.
 " ============================================================================
 
-" Variables {{{1
-" One Dict to rule them all, One Dict to find them,
-" One Dict to bring them all and in the darkness unlet them...
-let b:kto = {}
-
-" Lines where this expression returns 1 will be skipped
-" Expression borrowed from default vim ftplugin
-let b:kto.skip_e =
-      \ 'getline(".") =~ "^\\s*sy\\%[ntax]\\s\\+region" ||'.
-      \ 'synIDattr(synID(line("."),col("."),1),"name") =~? '.
-      \ '"comment\\|string\\|vim\k\{-}var"'
-
-" List of words that start a block at the beginning of the line
-let b:kto.beg_words =
-      \ '<fu%[nction]>|<%(wh%[ile]|for)>|<if>|<try>|'.
-      \ '<aug%[roup]\s+%(END>)@!\S'
-
-" Start of the block matches this
-let b:kto.start_p = '\C\v^\s*\zs%('.b:kto.beg_words.')'
-
-" Middle of the block matches this
-let b:kto.middle_p= '\C\v^\s*\zs%(<el%[seif]>|<cat%[ch]>|<fina%[lly]>)'
-
-" End of the block matches this
-let b:kto.end_p   =
-      \ '\C\v^\s*\zs%(<endf%[unction]>|<end%(w%[hile]|fo%[r])>|'.
-      \ '<en%[dif]>|<endt%[ry]>|<aug%[roup]\s+END>)'
-
-" Don't wrap or move the cursor
-let b:kto.flags = 'Wn'
-
-" }}}1
-
 " Set the rest of things
 call ktextobjects#init()
 
