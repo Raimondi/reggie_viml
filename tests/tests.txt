@@ -1,12 +1,18 @@
 # This tests are for runVimTests + vimTAP
 
-# Ruby Tests {{{1
+# Text Tests                                     {{{1
+#=================
+# Generic                                        {{{1
+# Multiple tests with custom keywords
+text_ge001.vim
+
+# Ruby Tests                                     {{{1
 #================
-# Generic {{{1
+# Generic                                        {{{1
 # Check for mappings with filetype plugin on
 ruby_ge001.vim
 
-# - Visual All {{{1
+# - Visual All                                   {{{1
 # Sample 1, go to 'class' and :norm vard
 ruby_va001.vim
 # Sample 1, go to 'end' and :norm vard
@@ -35,7 +41,7 @@ ruby_va012.vim
 # Sample 6, go to start of first nested block and :norm vggard
 ruby_va013.vim
 
-# - Visual Inner {{{1
+# - Visual Inner                                 {{{1
 # Sample 1, go to 'class' and :norm vird
 ruby_vi001.vim
 # Sample 1, go to 'end' and :norm vird
@@ -70,7 +76,7 @@ ruby_vi015.vim
 # Sample 20, go to start of nested block and :norm vird
 ruby_vi016.vim
 
-# - Operator Pending All {{{1
+# - Operator Pending All                         {{{1
 # Sample 1, go to 'class' and :norm dar
 ruby_oa001.vim
 # Sample 1, go to 'end' and :norm dar
@@ -87,7 +93,7 @@ ruby_oa006.vim
 # syntax on to ignore keywords inside strings
 ruby_oa007.vim
 
-# - Operator Pending Inner {{{1
+# - Operator Pending Inner                       {{{1
 # Sample 1, go to 'class' and :norm dir
 ruby_oi001.vim
 # Sample 1, go to 'end' and :norm dir
@@ -110,9 +116,9 @@ ruby_oi009.vim
 # Sample 20, go to start of nested block and :norm dir
 ruby_oi019.vim
 
-# VimL Tests {{{1
+# VimL Tests                                     {{{1
 #================
-# Generic {{{1
+# Generic                                        {{{1
 # Check for mappings with filetype plugin on
 vim_ge001.vim
 # Check for behaviour of gU
@@ -120,7 +126,7 @@ vim_ge002.vim
 # Check for redo using repeat.vim
 vim_ge003.vim
 
-# - Visual All {{{1
+# - Visual All                                   {{{1
 # Sample 2, go to 'if' and :norm vard, repeat on 'endif' and inside the block.
 vim_va001.vim
 # Sample 3, go to 'function' and :norm vard, repeat on 'endfunction' and
@@ -152,7 +158,7 @@ vim_va012.vim
 # Sample 1, go to start of first nested block and :norm vard.
 vim_va013.vim
 
-# - Visual Inner {{{1
+# - Visual Inner                                 {{{1
 # Sample 2, go to 'if' and :norm vird, repeat on 'endif' and inside the block.
 vim_vi001.vim
 # Sample 3, go to 'function' and :norm vird, repeat on 'endfunction' and
@@ -186,7 +192,7 @@ vim_vi013.vim
 # Sample 1, go to the middle and :norm virird
 vim_vi014.vim
 
-# - Operator Pending All {{{1
+# - Operator Pending All                         {{{1
 # Sample 2, go to 'if' and :norm dar, repeat on 'endif' and inside the block.
 vim_oa001.vim
 # Sample 3, go to 'function' and :norm dar, repeat on 'endfunction' and
@@ -208,7 +214,7 @@ vim_oa007.vim
 # Sample 1, go to start of first nested block and :norm dar.
 vim_oa008.vim
 
-# - Operator Pending Inner {{{1
+# - Operator Pending Inner                       {{{1
 # Sample 2, go to 'if' and :norm dir, repeat on 'endif' and inside the block.
 vim_oi001.vim
 # Sample 3, go to 'function' and :norm dir, repeat on 'endfunction' and
@@ -230,4 +236,4 @@ vim_oi007.vim
 # Sample 1, go to start of first nested block and :norm dir.
 vim_oi008.vim
 
-# vim: set fdm=marker tw=78: {{{1
+# vim: set fdm=marker tw=78:                     {{{1

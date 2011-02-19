@@ -126,13 +126,14 @@ let s:vars.ruby.end   = '\C\v^\s*\zs<end>'
 function! s:get_dict(filetype) " {{{2
   if exists('b:ktextobjects_start') && exists('b:ktextobjects_end')
     let default = get(s:vars, a:filetype, {'skip': '0', 'middle': '', 'allmap': 'k', 'innermap': 'k'})
-    return {
-          \ 'skip'     : get(b:, 'b:ktextobjects_skip', default.skip),
-          \ 'start'    : b:ktextobjects_start,
-          \ 'middle'   : get(b:, 'b:ktextobjects_middle', default.middle),
-          \ 'end'      : b:ktextobjects_end,
-          \ 'allmap'   : 'a'.get(b:, 'b:ktextobjects_map', default.allmap),
-          \ 'innermap' : 'i'.get(b:, 'b:ktextobjects_map', default.innermap)}
+    let dict = {}
+    let dict.skip     = exists('b:ktextobjects_skip') ? b:ktextobjects_skip : default.skip
+    let dict.start    = b:ktextobjects_start
+    let dict.middle   = exists('b:ktextobjects_middle') ? b:ktextobjects_middle : default.middle
+    let dict.end      = b:ktextobjects_end
+    let dict.allmap   = 'a'.(exists('b:ktextobjects_map') ? b:ktextobjects_map : default.allmap)
+    let dict.innermap = 'i'.(exists('b:ktextobjects_map') ? b:ktextobjects_map : default.innermap)
+    return dict
   else
     return get(s:vars, a:filetype, {})
   endif
@@ -168,7 +169,7 @@ function! ktextobjects#init(...) "{{{2
         \ 'sil! ounmap <buffer> <Plug>KeywordTextObjectsInner|' .
         \ 'sil! vunmap <buffer> <Plug>KeywordTextObjectsAll|'   .
         \ 'sil! vunmap <buffer> <Plug>KeywordTextObjectsInner|' .
-        \ 'sil! unlet b:ktextobjects_dict'
+        \ 'unlet! b:ktextobjects_dict'
   if exists('b:undo_ftplugin') && b:undo_ftplugin !~ 'unlet b:ktextobjects'
     if b:undo_ftplugin =~ '^\s*$'
       let b:undo_ftplugin = s:undo_ftplugin
@@ -182,12 +183,6 @@ function! ktextobjects#init(...) "{{{2
   " Mappings: {{{3
   for map in [b:ktextobjects_dict.allmap, b:ktextobjects_dict.innermap]
     " Create <Plug>mappings
-    "exec 'onoremap <silent> <buffer> '.
-    "      \ '<Plug>KeywordTextObjects'.
-    "      \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').' '.
-    "      \ ':<C-U>call <SID>TextObjects'.
-    "      \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').
-    "      \ '(0)<CR>'
     exec 'onoremap <silent> <buffer> <expr>'.
           \ '<Plug>KeywordTextObjects'.
           \ (map == b:ktextobjects_dict.allmap ? 'All' : 'Inner').' '.
