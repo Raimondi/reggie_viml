@@ -1,4 +1,4 @@
-" File:        autoload/ktextobjects.vim
+" File:        autoload/reggie_to.vim
 " Version:     0.1a
 " Modified:    2011-00-00
 " Description: This plugin provides new text objects for keyword based blocks.
@@ -7,7 +7,7 @@
 "              'autoload/' inside $HOME/.vim or somewhere else in your
 "              runtimepath.
 "
-"              :let testing_KeywordTextObjects = 1 to allow reloading of the
+"              :let testing_ReggieTextobjects = 1 to allow reloading of the
 "              plugin without closing Vim.
 "
 "              Multiple sentences on a single line are not handled by this
@@ -20,16 +20,16 @@
 " ============================================================================
 
 " Loading {{{1
-if (&cp || v:version < 700) && !exists('loaded_KeywordTextObjects')
+if (&cp || v:version < 700) && !exists('loaded_ReggieTextobjects')
   echohl WarningMsg
-  echom "ktextobjects needs 'nocompatible' set and Vim version 7 or later."
+  echom "reggie_to needs 'nocompatible' set and Vim version 7 or later."
   echohl Normal
   finish
 endif
 let save_cpo = &cpo
 set cpo&vim
 
-if !exists('loaded_KeywordTextObjects') || exists('testing_KeywordTextObjects')
+if !exists('loaded_ReggieTextobjects') || exists('testing_ReggieTextobjects')
   echom '----Loaded on: '.strftime("%Y %b %d %X")
 
   function! Test(first, last, test,...)
@@ -51,7 +51,7 @@ if !exists('loaded_KeywordTextObjects') || exists('testing_KeywordTextObjects')
 else
   finish
 endif
-let loaded_KeywordTextObjects = '0.1a'
+let loaded_ReggieTextobjects = '0.1a'
 
 " One Dict to rule them all, One Dict to find them,
 " One Dict to bring them all and in the darkness unlet them...
@@ -61,21 +61,21 @@ endif "}}}1
 
 " Functions {{{1
 function! s:get_dict() " {{{2
-  if exists('b:ktextobjects_start') && exists('b:ktextobjects_end')
+  if exists('b:reggie_to_start') && exists('b:reggie_to_end')
     let dict = {}
-    let dict.skip     = exists('b:ktextobjects_skip') ? b:ktextobjects_skip : 0
-    let dict.start    = b:ktextobjects_start
-    let dict.middle   = exists('b:ktextobjects_middle') ? b:ktextobjects_middle : ''
-    let dict.end      = b:ktextobjects_end
-    let dict.allmap   = 'a'.(exists('b:ktextobjects_map') ? b:ktextobjects_map : 'k')
-    let dict.innermap = 'i'.(exists('b:ktextobjects_map') ? b:ktextobjects_map : 'k')
+    let dict.skip     = exists('b:reggie_to_skip') ? b:reggie_to_skip : 0
+    let dict.start    = b:reggie_to_start
+    let dict.middle   = exists('b:reggie_to_middle') ? b:reggie_to_middle : ''
+    let dict.end      = b:reggie_to_end
+    let dict.allmap   = 'a'.(exists('b:reggie_to_map') ? b:reggie_to_map : 'k')
+    let dict.innermap = 'i'.(exists('b:reggie_to_map') ? b:reggie_to_map : 'k')
     return dict
   else
     return {}
   endif
 endfunction "}}}2
 
-function! ktextobjects#init(...) "{{{2
+function! reggie_to#init(...) "{{{2
   let bufnr = bufnr('%')
   call s:info('IN', 'Start: '.string(a:000))
 
@@ -94,11 +94,11 @@ function! ktextobjects#init(...) "{{{2
         \ 'sil! ounmap <buffer> ' . s:dict[bufnr].innermap.'  | ' .
         \ 'sil! vunmap <buffer> ' . s:dict[bufnr].allmap.'    | ' .
         \ 'sil! vunmap <buffer> ' . s:dict[bufnr].innermap.'  | ' .
-        \ 'sil! ounmap <buffer> <Plug>KeywordTextObjectsAll   | ' .
-        \ 'sil! ounmap <buffer> <Plug>KeywordTextObjectsInner | ' .
-        \ 'sil! vunmap <buffer> <Plug>KeywordTextObjectsAll   | ' .
-        \ 'sil! vunmap <buffer> <Plug>KeywordTextObjectsInner'
-  if exists('b:undo_ftplugin') && b:undo_ftplugin !~ 'unlet b:ktextobjects'
+        \ 'sil! ounmap <buffer> <Plug>ReggieTextobjectsAll   | ' .
+        \ 'sil! ounmap <buffer> <Plug>ReggieTextobjectsInner | ' .
+        \ 'sil! vunmap <buffer> <Plug>ReggieTextobjectsAll   | ' .
+        \ 'sil! vunmap <buffer> <Plug>ReggieTextobjectsInner'
+  if exists('b:undo_ftplugin') && b:undo_ftplugin !~ 'unlet b:reggie_to'
     if b:undo_ftplugin =~ '^\s*$'
       let b:undo_ftplugin = s:undo_ftplugin
     else
@@ -112,27 +112,27 @@ function! ktextobjects#init(...) "{{{2
   for map in [s:dict[bufnr].allmap, s:dict[bufnr].innermap]
     " Create <Plug>mappings
     exec 'onoremap <silent> <buffer> <expr>'.
-          \ '<Plug>KeywordTextObjects'.
+          \ '<Plug>ReggieTextobjects'.
           \ (map == s:dict[bufnr].allmap ? 'All' : 'Inner').' '.
           \ '<SID>TextObjects'.
           \ (map == s:dict[bufnr].allmap ? 'All' : 'Inner').'(0)'
 
     exec 'vnoremap <silent> <buffer> '.
-          \ '<Plug>KeywordTextObjects'.
+          \ '<Plug>ReggieTextobjects'.
           \ (map == s:dict[bufnr].allmap ? 'All' : 'Inner').' '.
           \ ':call <SID>TextObjects'.
           \ (map == s:dict[bufnr].allmap ? 'All' : 'Inner').'(1)<CR><Esc>gv'
     for mode in ['o', 'v']
     " Create useful mappings
-      if !exists('g:testing_KeywordTextObjects')
+      if !exists('g:testing_ReggieTextobjects')
         " Be nice with existing mappings
-        if !hasmapto('<Plug>KeywordTextObjects_'.map, mode)
-          exec mode.'map <unique> <buffer> '.map.' <Plug>KeywordTextObjects'.
+        if !hasmapto('<Plug>ReggieTextobjects_'.map, mode)
+          exec mode.'map <unique> <buffer> '.map.' <Plug>ReggieTextobjects'.
                 \ (map == s:dict[bufnr].allmap ? 'All' : 'Inner')
         endif
       else
         exec 'silent! '.mode.'unmap <buffer> '.map
-        exec mode.'map <buffer> '.map.' <Plug>KeywordTextObjects'.
+        exec mode.'map <buffer> '.map.' <Plug>ReggieTextobjects'.
               \ (map == s:dict[bufnr].allmap ? 'All' : 'Inner')
       endif
     endfor
@@ -515,15 +515,15 @@ let s:verbose_info  = 1
 let s:verbose_debug = 2
 let s:verbose_deep  = 3
 function! s:log(level, msg, scope) "{{{
-  if exists('g:ktextobjects_verbosity')
-    let s:verbosity = g:ktextobjects_verbosity
+  if exists('g:reggie_to_verbosity')
+    let s:verbosity = g:reggie_to_verbosity
   else
     let s:default_verbosity = s:verbose_quiet
     let s:verbosity = s:default_verbosity
   endif
 
-  if exists('g:testing_KeywordTextObjects') && type(g:testing_KeywordTextObjects) == type([]) && len(g:testing_KeywordTextObjects) > 0
-    let scope = index(g:testing_KeywordTextObjects, a:scope) >= 0
+  if exists('g:testing_ReggieTextobjects') && type(g:testing_ReggieTextobjects) == type([]) && len(g:testing_ReggieTextobjects) > 0
+    let scope = index(g:testing_ReggieTextobjects, a:scope) >= 0
   else
     let scope = 1
   endif

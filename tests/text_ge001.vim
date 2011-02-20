@@ -4,9 +4,9 @@ call vimtest#StartTap()
 call vimtap#Plan(12)
 edit sample_001.txt
 
-let b:ktextobjects_start = 'k\d'
-let b:ktextobjects_end   = 'e\d'
-call ktextobjects#init()
+let b:{fname}_start = 'k\d'
+let b:{fname}_end = 'e\d'
+exec 'call '.fname.'#init()'
 
 call vimtap#Ok(mapcheck(maps.pva, 'v') != '', 'Check <Plug> mapping.')
 call vimtap#Ok(maparg(maps.va, 'v') =~# maps.pva, 'Check Visual All mapping.')
@@ -33,8 +33,8 @@ normal 0v2ikd
 call vimtap#Is(getline(1,line('$')), ['k1 fkjg', 'k2 fkjg', 'k3 fkjg fkjg', 'e2', 'e3', 'e4'], 'Check if normal 0v2ikd was correct.')
 undo
 exec b:undo_ftplugin
-let b:ktextobjects_map = 'j'
-call ktextobjects#init()
+let b:{fname}_map = 'j'
+exec 'call '.fname.'#init()'
 6
 normal 0vijijd
 call vimtap#Is(getline(1,line('$')), ['k1 fkjg', 'k2 fkjg', 'k3 fkjg fkjg', 'e2', 'e3', 'e4'], 'Check if normal 0vijijd was correct.')

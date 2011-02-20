@@ -9,8 +9,8 @@ let maps =
       \  'vi': 'ik',
       \  'oa': 'ak',
       \  'oi': 'ik',
-      \  'pva': '<Plug>KeywordTextObjectsAll',
-      \  'pvi': '<Plug>KeywordTextObjectsInner',
-      \  'poa': '<Plug>KeywordTextObjectsAll',
-      \  'poi': '<Plug>KeywordTextObjectsInner'}
-let fname = 'ktextobjects'
+      \  'pva': '<Plug>ReggieTextobjectsAll',
+      \  'pvi': '<Plug>ReggieTextobjectsInner',
+      \  'poa': '<Plug>ReggieTextobjectsAll',
+      \  'poi': '<Plug>ReggieTextobjectsInner'}
+let fname = 'reggie_to'
