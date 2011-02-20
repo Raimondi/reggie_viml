@@ -7,7 +7,7 @@
 "              'autoload/' inside $HOME/.vim or somewhere else in your
 "              runtimepath.
 "
-"              :let testing_ReggieTextobjects = 1 to allow reloading of the
+"              :let testing_reggie_to = 1 to allow reloading of the
 "              plugin without closing Vim.
 "
 "              Multiple sentences on a single line are not handled by this
@@ -15,12 +15,11 @@
 "              unexpected way.
 "
 " Pending:     - Consider continued lines for inner text objects.
-"              - Use separate b:variables for each custom value.
 "              - Allow matching on the same line.
 " ============================================================================
 
 " Loading {{{1
-if (&cp || v:version < 700) && !exists('loaded_ReggieTextobjects')
+if (&cp || v:version < 700) && !exists('loaded_reggie_to')
   echohl WarningMsg
   echom "reggie_to needs 'nocompatible' set and Vim version 7 or later."
   echohl Normal
@@ -29,14 +28,14 @@ endif
 let save_cpo = &cpo
 set cpo&vim
 
-if !exists('loaded_ReggieTextobjects') || exists('testing_ReggieTextobjects')
+if !exists('loaded_reggie_to') || exists('testing_reggie_to')
   echom '----Loaded on: '.strftime("%Y %b %d %X")
 
   function! Test(first, last, test,...)
     if a:test == 1
-      return s:Match(a:first, s:dict[bufnr].start).', '.s:Match(a:first, s:dict[bufnr].middle).', '.s:Match(a:first, s:dict[bufnr].end)
+      return s:is_match(a:first, s:dict[bufnr].start).', '.s:is_match(a:first, s:dict[bufnr].middle).', '.s:is_match(a:first, s:dict[bufnr].end)
     elseif a:test == 2
-      return s:FindTextObject([a:first,0], [a:last,0], s:dict[bufnr].middle)
+      return s:find_text_object([a:first,0], [a:last,0], s:dict[bufnr].middle)
     elseif a:test == 3
       return searchpairpos(s:dict[bufnr].start, s:dict[bufnr].middle, s:dict[bufnr].end, a:1, s:dict[bufnr].skip)
     elseif a:test == 4
@@ -51,7 +50,7 @@ if !exists('loaded_ReggieTextobjects') || exists('testing_ReggieTextobjects')
 else
   finish
 endif
-let loaded_ReggieTextobjects = '0.1a'
+let loaded_reggie_to = '0.1a'
 
 " One Dict to rule them all, One Dict to find them,
 " One Dict to bring them all and in the darkness unlet them...
@@ -139,7 +138,7 @@ function! reggie_to#init(...) "{{{2
   endfor
 endfunction "}}}2
 
-function! s:TextObjectsAll(visual,...) range "{{{2
+function! s:text_object_all(visual,...) range "{{{2
   let bufnr = bufnr('%')
   call s:info('TOA', 'Start: '.a:visual.','.string(a:000))
   " Recursing?
@@ -163,12 +162,12 @@ function! s:TextObjectsAll(visual,...) range "{{{2
 
   call s:deepdbg('TOA', 'Initial t_start;t_end: '.string(t_start).';'.string(t_end))
   let match_both_outer = (
-        \ s:Match(t_start[0] - 1, s:dict[bufnr].start) &&
-        \ s:Match(t_end[0] + 1, s:dict[bufnr].end))
+        \ s:is_match(t_start[0] - 1, s:dict[bufnr].start) &&
+        \ s:is_match(t_end[0] + 1, s:dict[bufnr].end))
   for passes in [1,2]
 
     " Let's get some luv
-    let [t_start, t_end] = s:FindTextObject([t_start[0] - 1, 0], [t_end[0] + 1, 0], middle_p)
+    let [t_start, t_end] = s:find_text_object([t_start[0] - 1, 0], [t_end[0] + 1, 0], middle_p)
 
     call s:dbg('TOA', string(t_start).';'.string(t_end).':'.passes)
     if t_start[0] > 0 && t_end[0] > 0
@@ -187,7 +186,7 @@ function! s:TextObjectsAll(visual,...) range "{{{2
   endfor
 
   if count1 > 1
-    let [start, end] = s:TextObjectsAll(a:visual, start[0], end[0], count1)
+    let [start, end] = s:text_object_all(a:visual, start[0], end[0], count1)
   endif
 
   if a:0
@@ -226,7 +225,7 @@ function! s:TextObjectsAll(visual,...) range "{{{2
 
 endfunction " }}}2
 
-function! s:TextObjectsInner(visual, ...) range "{{{2
+function! s:text_object_inner(visual, ...) range "{{{2
   let bufnr = bufnr('%')
   call s:info('TOI', 'Start: '.a:visual.','.(a:0 ? ','.join(a:000, ',') : '').')')
 
@@ -254,7 +253,7 @@ function! s:TextObjectsInner(visual, ...) range "{{{2
   while i <= 2 && (current.start[0] + d_start) > 0 && (current.end[0] + d_end) <= line_eof
     let i += 1
     " Get a text object
-    let [current.start, current.end] = s:FindTextObject(
+    let [current.start, current.end] = s:find_text_object(
           \ [current.start[0] + d_start, 0], [current.end[0] + d_end, 0], middle_p)
     call s:dbg('TOI', 'Inner loop Current: '.string(current).', count: '.i)
 
@@ -298,7 +297,7 @@ function! s:TextObjectsInner(visual, ...) range "{{{2
 
   if count1 > 1 && [current.start,current.end] != [[0,0],[0,0]] "{{{
     " Let's recurse
-    let [current.start,current.end] = s:TextObjectsInner(a:visual, [current.start[0], 1], [current.end[0], 1], count1)
+    let [current.start,current.end] = s:text_object_inner(a:visual, [current.start[0], 1], [current.end[0], 1], count1)
   endif
 
   call s:dbg('TOI', 'Last Current: '.string(current).', count1: '.count1)
@@ -390,7 +389,7 @@ function! s:is_repeat(firstl, lastl, cfirstl, clastl, visual, recursive, origina
   return is_repeat
 endfunction "}}}2
 
-function! s:FindTextObject(first, last, middle, ...) "{{{2
+function! s:find_text_object(first, last, middle, ...) "{{{2
   let bufnr = bufnr('%')
   call s:info('FTO', 'Start: '.string(a:first).','.string(a:last).','.string(a:middle).join(a:000))
 
@@ -413,7 +412,7 @@ function! s:FindTextObject(first, last, middle, ...) "{{{2
 
   " searchpair() starts looking at the cursor position. Find out where that
   " should be. Also determine if the current line should be searched.
-  if s:Match(a:first[0], s:dict[bufnr].end)
+  if s:is_match(a:first[0], s:dict[bufnr].end)
     let spos   = 1
     let sflags = flags.'b'
   else
@@ -426,9 +425,9 @@ function! s:FindTextObject(first, last, middle, ...) "{{{2
   let first.start  = searchpairpos(s:dict[bufnr].start,a:middle,s:dict[bufnr].end,sflags,s:dict[bufnr].skip)
 
   if a:middle == ''
-    let s_match = s:Match(a:first[0], s:dict[bufnr].start)
+    let s_match = s:is_match(a:first[0], s:dict[bufnr].start)
   else
-    let s_match = s:Match(a:first[0], s:dict[bufnr].start) || s:Match(a:first[0], a:middle)
+    let s_match = s:is_match(a:first[0], s:dict[bufnr].start) || s:is_match(a:first[0], a:middle)
   endif
   if s_match
     let epos   = 9999
@@ -446,7 +445,7 @@ function! s:FindTextObject(first, last, middle, ...) "{{{2
   if a:first == a:last "{{{
     let result = [first.start, first.end]
   else
-    let [last.start, last.end] = s:FindTextObject(a:last, a:last, a:middle, l:count)
+    let [last.start, last.end] = s:find_text_object(a:last, a:last, a:middle, l:count)
     call s:dbg('FTO', 'Last  : '.string([last.start, last.end]))
 
     let first.range  = first.end[0] - first.start[0]
@@ -458,7 +457,7 @@ function! s:FindTextObject(first, last, middle, ...) "{{{2
           \   last.range  > 0)
       " Looks like a middle inner match, start over without looking for
       " s:dict[bufnr].middle
-      let result = s:FindTextObject(a:first, a:last, '', 1)
+      let result = s:find_text_object(a:first, a:last, '', 1)
     else
       " Now, decide what to return
       if first.range > last.range
@@ -501,7 +500,7 @@ function! s:FindTextObject(first, last, middle, ...) "{{{2
   return result
 endfunction "}}}2
 
-function! s:Match(line, part) " {{{2
+function! s:is_match(line, part) " {{{2
   let bufnr = bufnr('%')
   call cursor(a:line, 1)
   let result = search(a:part, 'cW', a:line) > 0 && !eval(s:dict[bufnr].skip)
