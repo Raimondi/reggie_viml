@@ -23,7 +23,7 @@
 
                                                 Helping you tame those beasts!~
 
-Reggie T.O.: RegExp Based Text Objects                               *reggie_to*
+Reggie T.O.: RegExp Based Text Objects v0.1a                         *reggie_to*
 
 This library allows to create regexp based text objects that follow the
 behaviour of the built-in Vim text objects.
