@@ -25,8 +25,8 @@
 
 Reggie T.O.: RegExp Based Text Objects                               *reggie_to*
 
-This library allows to create regexp based text objects. These text objects
-follow the behaviour of the built-in Vim text objects.
+This library allows to create regexp based text objects that follow the
+behaviour of the built-in Vim text objects.
 
 ==============================================================================
 How to use it                                                    *reggie_to_use*
@@ -35,7 +35,7 @@ If your language of choice is not supported by default, you can create the
 text objects (ik for inner and ak for all) for it. Create the file
 ftplugin/[filetype]/reggie_to.vim somewhere in your 'runtimepath' ($HOME/.vim
 is a usual place) and call reggie_to#init() after creating the following
-variables as needed:
+variables as needed (see |reggie_to_example|):
 
 b:reggie_to_start                                            *b:reggie_to_start*
 b:reggie_to_middle                                          *b:reggie_to_middle*
@@ -109,8 +109,8 @@ will set the variables and create the text objects using the following lines:
  17 " comments, the following expression returns 1 when evaluated with the
  18 " cursor on a string or comment.
  19 let b:reggie_to_skip   =
- 20                   \ 'synIDattr(synID(line("."),col("."),1),"name") =~? '.
- 21                   \ '"comment\\|string"'
+ 20       \ 'synIDattr(synID(line("."),col("."),1),"name") =~? '.
+ 21       \ '"comment\\|string"'
  22
  23 " Now let's create our beloved text objects.
  24 call reggie_to#init()
@@ -121,7 +121,7 @@ Enjoy!
 Limitations                                              *reggie_to_limitations*
 
 - Works linewise.
-- It might not work correctly or at all when the start/middle/end is part of a
+- It might not work correctly or at all when any start/middle/end is part of a
   multi statement line.
 - Continued lines are not considered in inner text objects.
 
@@ -139,6 +139,9 @@ Hi there! My name is Israel Chauca F. and I can be reached at:
 
 Feel free to send me any feedback about this plugin, I'll be very pleased to
 read it.
+
+If you build a new ftplugin for a language, please send it to me and I'll add
+it to the library.
 
 ==============================================================================
 History                                                      *reggie_to_history*
