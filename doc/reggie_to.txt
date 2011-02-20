@@ -1,0 +1,198 @@
+*reggie_to.txt*   For Vim version 7.0	Last change: 2011 February 28
+
+
+       ##### ###                                                             ~
+    ######  # ##                                          #                  ~
+   ##   #  #  ##                                         ###                 ~
+  #    #  #   ##                                          #                  ~
+      #  #    #                                                              ~
+     ## ##   #       ###        ####          ####      ###        ###       ~
+     ## ##  #       # ###      #  ###  #     #  ###  #   ###      # ###      ~
+     ## ####       #   ###    #    ####     #    ####     ##     #   ###     ~
+     ## ##  ###   ##    ###  ##     ##     ##     ##      ##    ##    ###    ~
+     ## ##    ##  ########   ##     ##     ##     ##      ##    ########     ~
+     #  ##    ##  #######    ##     ##     ##     ##      ##    #######      ~
+        #     ##  ##         ##     ##     ##     ##      ##    ##           ~
+    ####      ### ####    #  ##     ##     ##     ##      ##    ####    #    ~
+   #  ####    ##   #######    ########      ########      ### #  #######     ~
+  #    ##     #     #####       ### ###       ### ###      ###    #####      ~
+  #                                  ###           ###                       ~
+   ##                          ####   ###    ####   ###                      ~
+                             #######  ##   #######  ##                       ~
+                            #     ####    #     ####                         ~
+
+                                                Helping you tame those beasts!~
+
+Reggie T.O.: RegExp Based Text Objects                       *reggie_to*
+
+This library allows to create regexp based text objects. These text objects
+follow the behaviour of the built-in Vim text objects.
+
+==============================================================================
+How to use it                                                    *reggie_to_use*
+
+If your language of choice is not supported by default, you can create the
+text objects (ik for inner and ak for all) for it. Create the file
+ftplugin/[filetype]/reggie_to.vim somewhere in your 'runtimepath' ($HOME/.vim
+is a usual place) and call reggie_to#init() after creating the following
+variables as needed:
+
+b:reggie_to_start                                            *b:reggie_to_start*
+b:reggie_to_middle                                          *b:reggie_to_middle*
+b:reggie_to_end                                                *b:reggie_to_end*
+
+Value: string
+Default: ""
+
+These variables hold the patterns that will be used to match the start, middle
+and end of the text object respectively. See |searchpair()|for more details.
+Note: At least b:reggie_to_start and b:reggie_to_end must be set.
+
+b:reggie_to_skip                                              *b:reggie_to_skip*
+
+Value: expression
+Default: 0
+
+This variable is used to skip over areas where it should not make sense to
+match for the start/middle/end of a text objects. When this expression
+evaluates to 1, the matched string will we skipped. See |searchpair()| for
+more details.
+
+b:reggie_to_map                                                *b:reggie_to_map*
+
+Value: string
+Default: 'k'
+
+The value of this variable is used to create the mappings by appending them to
+i and a. e.g.: the default value of k will create the ik and ak text objects.
+
+==============================================================================
+Example                                                      *reggie_to_example*
+
+We will create text objects to handle the following text:
+>
+  1 if number of users == 1
+  2   send this to user
+  3 else
+  4   for every user in users
+  5     send this instead
+  6     send this multiline string "First line
+  7         end of indentation."
+  8   end
+  9 end
+<
+
+The corresponding filetype for that language is "mine", so we need to create
+the following file:
+>
+    ~/.vim/ftplugin/mine/reggie_to.vim
+<
+That file will be sourced when the 'filetype' option is set to "mine", so we
+will set the variables and create the text objects using the following lines:
+>
+  1 " Text objects start with 'if' and 'for' at the beginning of the line
+  2 " following 0 or more white spaces.
+  3 let b:reggie_to_start  = '^\s*\zs\(if\|for\)'
+  4
+  5 " Middle of the text objects matches 'else' following 0 or more white
+  6 " space.
+  7 let b:reggie_to_middle = '^\s*\zselse'
+  8
+  9 " The end of the text objects matches 'end' following 0 or more white
+ 10 " space.
+ 11 let b:reggie_to_end    = '^\s*\zsend'
+ 12
+ 13 " We don't the defaul ik/ak mappings, so we'll use ix/ax.
+ 14 let b:reggie_to_map    = 'x'
+ 15
+ 16 " We should not match for limits of the text object inside strings or
+ 17 " comments, the following expression returns 1 when evaluated with the
+ 18 " cursor on a string or comment.
+ 19 let b:reggie_to_skip   =
+ 20                   \ 'synIDattr(synID(line("."),col("."),1),"name") =~? '.
+ 21                   \ '"comment\\|string"'
+ 22
+ 23 " Now let's create our beloved text objects.
+ 24 call reggie_to#init()
+<
+Enjoy!
+
+==============================================================================
+Limitations                                              *reggie_to_limitations*
+
+- Works linewise.
+- It might not work correctly or at all when the start/middle/end is part of a
+  multi statement line.
+- Continued lines are not considered in inner text objects.
+
+==============================================================================
+Todo list                                                       *reggie_to_todo*
+
+- Automatic set-up by file type.
+- Make block-wise visual wrapping work on un-even regions.
+
+==============================================================================
+Maintainer                                                *reggie_to_maintainer*
+
+Hi there! My name is Israel Chauca F. and I can be reached at:
+    mailto:israelchauca@gmail.com
+
+Feel free to send me any feedback about this plugin, I'll be very pleased to
+read it.
+
+==============================================================================
+History                                                      *reggie_to_history*
+
+ Version      Date      Release notes                                       ~
+|------------------------------------------------------------------------------|
+   1.0     2009-08-23 * Current Release:
+                        - Initial upload.
+|------------------------------------------------------------------------------|
+
+
+                              .-.._    ___                                   ~
+                           ,-'   |:\ /'--.`.                                    ~
+                          /'    ,|:|/::::| '\                                   ~
+                        ,'  ,.-:::::::::::.  \                                  ~
+                      _/' /::::::::::::::::`  \                                 ~
+                     /'  ':::::::_,--.::::::`.'\                                ~
+                    /  ,'::::.,-'     `\::::::||                                ~
+                   |  /:::_/'           `\::::||                                ~
+                   |  \::-                \:::||                                ~
+                   /_                      \_/ |                                ~
+                  |  '-._                      /                                ~
+                  |'.    '`-..._              |                                 ~
+                  ..  '--_             ''----.|                                 ~
+                  | `._   '-----  '''----__,..\                                 ~
+                  |.._ '-.._________..--'   ,'|_                                ~
+                  |   `--..__            _,' /| ''--.                           ~
+''''''---..__     |          '`-------'''   /-\ .-.._\_                         ~
+             '-\__ \-----....__        _..'   ,.-. `. .`\                       ~
+                  '`.          """--"""    _/' _. \ \  | \                      ~
+                     \--..___       ___..--   / | ' |  |  \   ___...---         ~
+            _,........\      """--""        ./  |/-..__=..|,-'                  ~
+  ______, ''           `            __,...-''  ,'     -.. '                     ~
+-'                      `.-...,-''''          - |        '`----------           ~
+                         \              _.,-'' .'                               ~
+                          \ ..______.,-'      ,'                                ~
+                           '-.             ,/'                                  ~
+                              ''---'......-'                                    ~
+                                                   /`-._                        ~
+                                                   |::::""--.._                 ~
+                               /(     )\           /::::::;;;;;\____            ~
+                               \\  _  //          /;;::::::;;;;;;;;;\           ~
+                   _           / \(_)/ \         /;;;;:::::::;;;;;;;;\___       ~
+                  /;|          |       <        |;;;;;;;:::::::;;;;;;:::;\      ~
+             ,-._/;;\           \_    /        /;;;;;;;;;:::::::::::;;;;;;|     ~
+        _.-;;::::;;;;\           /    |       /;;;;;:::::::::;;;:::::;;;;;;\    ~
+       /;;::;;;;;;;;;;\          |    /     _/;;;;::::::::::;;;;;:::::;;;;;;\   ~
+   _.-;::::::;;;;;;;;;;\         \__  \    /;;;;;:::::::::;;;;;::::;;;;;;;;;;\  ~
+.-;;;::::::::::;;;;;;;;;\           `-'   /;;;;:::::::::;;;;;;;;;::;;;;;;;;;;;\ ~
+;;;;:::::::::::::;;;;;;;;|               /;;;;;:::::;;;;;;;;;;;:::::;;;;;;;;JRO\~
+
+Sand opened only two body lengths from him. Crystal teeth flashed in the dim~
+light. He saw the yawning mouth-cavern with, far back, the ambient movement of~
+dim flame. The overpowering redolence of the spice swept over him. But the ~
+worm had stopped. ~
+
+vim:tw=78:et:ts=8:sw=2:ft=help:norl:formatoptions+=tcroqn:autoindent:
