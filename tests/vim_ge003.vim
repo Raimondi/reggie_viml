@@ -11,7 +11,7 @@ normal 0dik
 13
 normal .
 call vimtap#Is(getline(1,line('$')), ['" Sample 2', 'let i = 1', '', 'if i', '  let i = 2', 'elseif', '  echom 2', 'else', '  try', '  catch', '    echoe ''Trouble''', '  finally', '  endtry', 'endif'], 'Check if inner redo was correct.')
-undo 0
+undo
 9
 normal 0dak
 4
