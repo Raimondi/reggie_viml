@@ -97,7 +97,7 @@ function! reggie_to#init(...) "{{{2
         \ 'sil! ounmap <buffer> <Plug>ReggieTextobjectsInner | ' .
         \ 'sil! vunmap <buffer> <Plug>ReggieTextobjectsAll   | ' .
         \ 'sil! vunmap <buffer> <Plug>ReggieTextobjectsInner'
-  if exists('b:undo_ftplugin') && b:undo_ftplugin !~ 'unlet b:reggie_to'
+  if exists('b:undo_ftplugin') && b:undo_ftplugin !~ 'ReggieTextobjectsAll'
     if b:undo_ftplugin =~ '^\s*$'
       let b:undo_ftplugin = s:undo_ftplugin
     else
@@ -113,14 +113,14 @@ function! reggie_to#init(...) "{{{2
     exec 'onoremap <silent> <buffer> <expr>'.
           \ '<Plug>ReggieTextobjects'.
           \ (map == s:dict[bufnr].allmap ? 'All' : 'Inner').' '.
-          \ '<SID>TextObjects'.
-          \ (map == s:dict[bufnr].allmap ? 'All' : 'Inner').'(0)'
+          \ '<SID>text_object_'.
+          \ (map == s:dict[bufnr].allmap ? 'all' : 'inner').'(0)'
 
     exec 'vnoremap <silent> <buffer> '.
           \ '<Plug>ReggieTextobjects'.
           \ (map == s:dict[bufnr].allmap ? 'All' : 'Inner').' '.
-          \ ':call <SID>TextObjects'.
-          \ (map == s:dict[bufnr].allmap ? 'All' : 'Inner').'(1)<CR><Esc>gv'
+          \ ':call <SID>text_object_'.
+          \ (map == s:dict[bufnr].allmap ? 'all' : 'inner').'(1)<CR><Esc>gv'
     for mode in ['o', 'v']
     " Create useful mappings
       if !exists('g:testing_ReggieTextobjects')
