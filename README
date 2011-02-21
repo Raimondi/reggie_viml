@@ -27,7 +27,8 @@ Reggie T.O.: RegExp Based Text Objects                               *reggie_to*
 v1.0
 
 This library allows to create regexp based text objects that follow the
-behaviour of the built-in Vim text objects.
+behaviour of the built-in Vim text objects. It supports Ruby and VimL by
+default.
 
 ==============================================================================
 How to use it                                                    *reggie_to_use*
@@ -103,8 +104,8 @@ will set the variables and create the text objects using the following lines:
  10 " space.
  11 let b:reggie_to_end    = '^\s*\zsend'
  12
- 13 " We don't the defaul ik/ak mappings, so we'll use ix/ax.
- 14 let b:reggie_to_map    = 'x'
+ 13 " We don't like the default ik/ak mappings, so we'll use in/an.
+ 14 let b:reggie_to_map    = 'n'
  15
  16 " We should not match for limits of the text object inside strings or
  17 " comments, the following expression returns 1 when evaluated with the
@@ -125,12 +126,6 @@ Limitations                                              *reggie_to_limitations*
 - It might not work correctly or at all when any start/middle/end is part of a
   multi statement line.
 - Continued lines are not considered in inner text objects.
-
-==============================================================================
-Todo list                                                       *reggie_to_todo*
-
-- Automatic set-up by file type.
-- Make block-wise visual wrapping work on un-even regions.
 
 ==============================================================================
 Maintainer                                                *reggie_to_maintainer*
