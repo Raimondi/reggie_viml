@@ -7,6 +7,7 @@ VERSION=$(shell perl -ne 'if (/\*\sCurrent\sRelease:/) {s/^\s+(\d+\.\S+)\s.*$$/\
 VIMFOLDER=~/.vim/
 VIM=/usr/bin/vim
 ALL=$(AUTOL) $(DOC) $(FTPLUGINVIM) $(FTPLUGINRUBY)
+QALL=$(shell for i in $(ALL); do var=$$var"\"$$i\", ";done;echo $${var%,})
 
 .PHONY: clean all vimball zip release echo
 
@@ -35,7 +36,8 @@ $(PLUGIN).vba $(PLUGIN).zip version: $(ALL)
 	@if [ "$@" == "$(PLUGIN).vba" ]; then \
 		echo Creating $(PLUGIN).vba; \
 		rm -f $(PLUGIN)-$(VERSION).vba; \
-		$(VIM) -N -u NONE -c 'ru! plugin/vimballPlugin.vim' -c ':call append("0", [ "$(AUTOL)", "$(DOC)", "$(FTPLUGINRUBY)", "$(FTPLUGINVIM)"])' -c '$$d' -c ":%MkVimball $(PLUGIN)-$(VERSION)  ." -c':q!'; \
+		echo $(VIM) -N -u NONE -c 'ru! plugin/vimballPlugin.vim' -c ':call append("0", [ $(QALL) ])' -c '$$d' -c ":%MkVimball $(PLUGIN)-$(VERSION)  ." -c':q!'; \
+		$(VIM) -N -u NONE -c 'ru! plugin/vimballPlugin.vim' -c ':call append("0", [ $(QALL) ])' -c '$$d' -c ":%MkVimball $(PLUGIN)-$(VERSION)  ." -c':q!'; \
 		ln -f $(PLUGIN)-$(VERSION).vba $(PLUGIN).vba; \
 	elif [ "$@" == "$(PLUGIN).zip" ]; then \
 		echo Creating $(PLUGIN).zip; \
@@ -64,3 +66,4 @@ $(PLUGIN).gz: $(PLUGIN).vba
 release: version all
 
 echo:
+	echo $(QALL)
