@@ -1,11 +1,11 @@
-PLUGIN=$(shell basename "$$PWD")
-AUTOL=autoload/$(PLUGIN).vim
-DOC=$(wildcard doc/*.txt)
-FTPLUGINS=$(wildcard ftplugin/**/*.vim)
-VERSION=$(shell perl -ne 'if (/\*\sCurrent\sRelease:/) {s/^\s+(\d+\.\S+)\s.*$$/\1/;print}' $(DOC))
-VIM=vim
-ALL=$(AUTOL) $(DOC) $(FTPLUGINS)
-QALL=$(shell for i in $(ALL); do var=$$var"\"$$i\", ";done;echo $${var%,})
+PLUGIN    = $(shell basename "$$PWD")
+AUTOL     = autoload/$(PLUGIN).vim
+DOC       = $(wildcard doc/*.txt)
+FTPLUGINS = $(wildcard ftplugin/**/*.vim)
+VERSION   = $(shell perl -ne 'if (/\*\sCurrent\sRelease:/) {s/^\s+(\d+\.\S+)\s.*$$/\1/;print}' $(DOC))
+VIM       = vim
+ALL       = $(AUTOL) $(DOC) $(FTPLUGINS)
+QALL      = $(shell for i in $(ALL); do var                                                            = $$var"\"$$i\", ";done;echo $${var%,})
 
 .PHONY: clean all vimball zip release echo
 all: vimball README zip gzip
