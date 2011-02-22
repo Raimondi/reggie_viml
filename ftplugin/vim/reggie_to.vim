@@ -1,6 +1,6 @@
 " File:        ftplugin/vim/reggie_to.vim
 " Version:     1.0
-" Modified:    2011-02-20
+" Modified:    2011-02-22
 " Description: This ftplugin sets the values needed for VimL files.
 " Maintainer:  Israel Chauca F. <israelchauca@gmail.com>
 " ============================================================================

@@ -1,6 +1,6 @@
 " File:        ftplugin/ruby/reggie_to.vim
 " Version:     1.0
-" Modified:    2011-02-20
+" Modified:    2011-02-22
 " Description: This ftplugin sets the values needed for Ruby files.
 " Maintainer:  Israel Chauca F. <israelchauca@gmail.com>
 "=============================================================================

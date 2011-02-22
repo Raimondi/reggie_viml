@@ -1,6 +1,6 @@
 " File:        autoload/reggie_to.vim
 " Version:     1.0
-" Modified:    2011-02-20
+" Modified:    2011-02-22
 " Description: This plugin provides new text objects for keyword based blocks.
 " Maintainer:  Israel Chauca F. <israelchauca@gmail.com>
 " Manual:      The new text objects are 'ik' and 'ak'. Place this file in

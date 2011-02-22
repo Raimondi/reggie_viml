@@ -1,4 +1,4 @@
-*reggie_to.txt*   For Vim version 7.0	Last change: 2011 February 20
+*reggie_to.txt*   For Vim version 7.0	Last change: 2011 February 22
 
 
        xxxxx xxx                                                             ~
@@ -84,8 +84,8 @@ We will create text objects to handle the following text:
   9 end
 <
 
-The corresponding filetype for that language is "mine", so we need to create
-the following file:
+Let's say that the corresponding filetype for that language is "mine", so we
+need to create the following file:
 >
     ~/.vim/ftplugin/mine/reggie_to.vim
 <
@@ -144,7 +144,7 @@ History                                                      *reggie_to_history*
 
  Version      Date      Release notes                                       ~
 |------------------------------------------------------------------------------|
-   1.0     2011-02-20 * Current Release:
+   1.0     2011-02-22 * Current Release:
                         - Initial upload.
 |------------------------------------------------------------------------------|
 

@@ -1,5 +1,5 @@
 # This should make my life easier.
-# Almost everthing depends on perl.
+# Everthing depends on perl.
 
 # The name of the plugin is the same of the containing dir.
 plugin_name        = $(shell basename "$$PWD")
