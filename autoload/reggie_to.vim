@@ -59,21 +59,6 @@ if !exists('s:dict')
 endif "}}}1
 
 " Functions {{{1
-function! s:get_dict() " {{{2
-  if exists('b:reggie_to_start') && exists('b:reggie_to_end')
-    let dict = {}
-    let dict.skip     = exists('b:reggie_to_skip') ? b:reggie_to_skip : 0
-    let dict.start    = b:reggie_to_start
-    let dict.middle   = exists('b:reggie_to_middle') ? b:reggie_to_middle : ''
-    let dict.end      = b:reggie_to_end
-    let dict.allmap   = 'a'.(exists('b:reggie_to_map') ? b:reggie_to_map : 'k')
-    let dict.innermap = 'i'.(exists('b:reggie_to_map') ? b:reggie_to_map : 'k')
-    return dict
-  else
-    return {}
-  endif
-endfunction "}}}2
-
 function! reggie_to#init(...) "{{{2
   let bufnr = bufnr('%')
   call s:info('IN', 'Start: '.string(a:000))
@@ -136,6 +121,21 @@ function! reggie_to#init(...) "{{{2
       endif
     endfor
   endfor
+endfunction "}}}2
+
+function! s:get_dict() " {{{2
+  if exists('b:reggie_to_start') && exists('b:reggie_to_end')
+    let dict = {}
+    let dict.skip     = exists('b:reggie_to_skip') ? b:reggie_to_skip : 0
+    let dict.start    = b:reggie_to_start
+    let dict.middle   = exists('b:reggie_to_middle') ? b:reggie_to_middle : ''
+    let dict.end      = b:reggie_to_end
+    let dict.allmap   = 'a'.(exists('b:reggie_to_map') ? b:reggie_to_map : 'k')
+    let dict.innermap = 'i'.(exists('b:reggie_to_map') ? b:reggie_to_map : 'k')
+    return dict
+  else
+    return {}
+  endif
 endfunction "}}}2
 
 function! s:text_object_all(visual,...) range "{{{2
@@ -513,6 +513,7 @@ let s:verbose_quiet = 0
 let s:verbose_info  = 1
 let s:verbose_debug = 2
 let s:verbose_deep  = 3
+
 function! s:log(level, msg, scope) "{{{
   if exists('g:reggie_to_verbosity')
     let s:verbosity = g:reggie_to_verbosity
@@ -532,17 +533,17 @@ function! s:log(level, msg, scope) "{{{
   endif
 endfunction "}}}
 
-function! s:info(scope, msg)
+function! s:info(scope, msg) "{{{2
   call s:log(s:verbose_info, 'info: ' . a:scope . ' - '. a:msg, a:scope)
-endfunction
+endfunction "}}}2
 
-function! s:dbg(scope, msg)
+function! s:dbg(scope, msg) "{{{2
   call s:log(s:verbose_debug, 'dbg : ' . a:scope . ' - '. a:msg, a:scope)
-endfunction
+endfunction "}}}2
 
-function! s:deepdbg(scope, msg)
+function! s:deepdbg(scope, msg) "{{{2
   call s:log(s:verbose_deep, 'deep: ' . a:scope . ' - '. a:msg, a:scope)
-endfunction
+endfunction "}}}2
 "}}}
 let &cpo = save_cpo
 " vim: set et sw=2 sts=2 tw=78: {{{1
