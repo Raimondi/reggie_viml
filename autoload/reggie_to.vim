@@ -533,17 +533,17 @@ function! s:log(level, msg, scope) "{{{
   endif
 endfunction "}}}
 
-function! s:info(scope, msg) "{{{2
+function! s:info(scope, msg) "{{{
   call s:log(s:verbose_info, 'info: ' . a:scope . ' - '. a:msg, a:scope)
-endfunction "}}}2
+endfunction "}}}
 
-function! s:dbg(scope, msg) "{{{2
+function! s:dbg(scope, msg) "{{{
   call s:log(s:verbose_debug, 'dbg : ' . a:scope . ' - '. a:msg, a:scope)
-endfunction "}}}2
+endfunction "}}}
 
-function! s:deepdbg(scope, msg) "{{{2
+function! s:deepdbg(scope, msg) "{{{
   call s:log(s:verbose_deep, 'deep: ' . a:scope . ' - '. a:msg, a:scope)
-endfunction "}}}2
+endfunction "}}}
 "}}}
 let &cpo = save_cpo
 " vim: set et sw=2 sts=2 tw=78: {{{1
