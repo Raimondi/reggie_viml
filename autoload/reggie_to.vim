@@ -142,7 +142,7 @@ function! s:text_object_all(visual,...) range "{{{2
   let bufnr = bufnr('%')
   call s:info('TOA', 'Start: '.a:visual.','.string(a:000))
   " Recursing?
-  if a:0
+  if a:0 "{{{
     let firstline = a:1
     let lastline  = a:2
     let count1    = a:3 - 1
@@ -151,12 +151,11 @@ function! s:text_object_all(visual,...) range "{{{2
     let lastline  = a:lastline
     let count1    = v:count1
     "let count1    = v:count1 < 1 ? 1 : v:count1
-  endif
+  endif "}}}
   call s:dbg('TOA', 'count1: '.count1.', firstline: '.firstline.', lastline: '.lastline)
   let start         = [0,0]
   let end           = [-1,0]
   let middle_p      = ''
-
   let t_start = [firstline + 1, 0]
   let t_end   = [lastline - 1, 0]
 
@@ -167,7 +166,8 @@ function! s:text_object_all(visual,...) range "{{{2
   for passes in [1,2]
 
     " Let's get some luv
-    let [t_start, t_end] = s:find_text_object([t_start[0] - 1, 0], [t_end[0] + 1, 0], middle_p)
+    let [t_start, t_end] = s:find_text_object(
+          \ [t_start[0] - 1, 0], [t_end[0] + 1, 0], middle_p)
 
     call s:dbg('TOA', string(t_start).';'.string(t_end).':'.passes)
     if t_start[0] > 0 && t_end[0] > 0
@@ -188,19 +188,19 @@ function! s:text_object_all(visual,...) range "{{{2
   if count1 > 1
     let [start, end] = s:text_object_all(a:visual, start[0], end[0], count1)
   endif
-
   if a:0
     return [start, end]
   endif
 
-  call s:dbg('TOA', 'start;end: '.string(start).';'.string(end).', passes: '.passes)
+  call s:dbg('TOA', 'start;end: '.string(start).';'.string(end))
+  " Return a mapping {{{
   if a:visual
     if end[0] >= start[0] && start[0] >= 1 && end[0] >= 1
       " Do visual magic
       exec "normal! \<Esc>"
       call cursor(start)
       exec "normal! v".end[0]."G$h"
-      call s:dbg('TOA', 'start;end: '.string(start).';'.string(end).', passes: '.passes)
+      call s:dbg('TOA', 'start;end: '.string(start).';'.string(end))
     endif
   else
     if end[0] >= start[0] && start[0] >= 1 && end[0] >= 1
@@ -215,14 +215,15 @@ function! s:text_object_all(visual,...) range "{{{2
         let to_eol   = '$h'
         let from_bol = ''
       endif
-      return ':call cursor('.string(start).')|exec "normal! '.from_bol.'v'.end[0]."G".to_eol."\"\<CR>:silent! call repeat#set(v:operator.'".s:dict[bufnr].allmap."', ".count1.")\<CR>"
-
+      return ':call cursor('.string(start).')|exec "normal! '              .
+            \ from_bol.'v'.end[0]."G".to_eol."\"\<CR>"                     .
+            \ ":silent! call repeat#set(v:operator.'".s:dict[bufnr].allmap .
+            \ "', ".count1.")\<CR>"
     else
       " No pair found, do nothing
       return "\<Esc>"
     endif
   endif
-
 endfunction " }}}2
 
 function! s:text_object_inner(visual, ...) range "{{{2
@@ -241,7 +242,9 @@ function! s:text_object_inner(visual, ...) range "{{{2
     let count1    = v:count1 < 1 ? 1 : v:count1
     let original  = [getpos("'<")[1:2], getpos("'>")[1:2]]
   endif " }}}
-  let current     = {'start': [firstline,0], 'end': [lastline,0]}
+  "let current     = {'start': [firstline,0], 'end': [lastline,0]}
+  let start       = [firstline,0]
+  let end         = [lastline,0]
   let middle_p    = s:dict[bufnr].middle
   let line_eof    = line('$')
   let l:count     = 0
@@ -250,22 +253,22 @@ function! s:text_object_inner(visual, ...) range "{{{2
   let i           = 0
   call s:dbg("TOI", "count1: ".count1.', v:count1: '.v:count1.', v:count: '.v:count)
 
-  while i <= 2 && (current.start[0] + d_start) > 0 && (current.end[0] + d_end) <= line_eof
+  while i <= 2 && (start[0] + d_start) > 0 && (end[0] + d_end) <= line_eof
     let i += 1
     " Get a text object
-    let [current.start, current.end] = s:find_text_object(
-          \ [current.start[0] + d_start, 0], [current.end[0] + d_end, 0], middle_p)
-    call s:dbg('TOI', 'Inner loop Current: '.string(current).', count: '.i)
+    let [start, end] = s:find_text_object(
+          \ [start[0] + d_start, 0], [end[0] + d_end, 0], middle_p)
+    call s:dbg('TOI', 'Inner loop Current: '.string([start,end]).', count: '.i)
 
     " If it's null, stop looking
-    if [current.start, current.end] == [[0,0],[0,0]]
+    if [start, end] == [[0,0],[0,0]]
       break
     endif
     if a:0 && i == 2
       break
     endif
     " Repeat? {{{
-    let is_repeat = s:is_repeat(firstline, lastline, current.start[0], current.end[0], a:visual, a:0, original)
+    let is_repeat = s:is_repeat(firstline, lastline, start[0], end[0], a:visual, a:0, original)
 
     if is_repeat == 4 || is_repeat == -2
       " It is repeated with an inner middle block
@@ -295,42 +298,42 @@ function! s:text_object_inner(visual, ...) range "{{{2
     endif "}}}
   endwhile
 
-  if count1 > 1 && [current.start,current.end] != [[0,0],[0,0]] "{{{
+  if count1 > 1 && [start,end] != [[0,0],[0,0]]
     " Let's recurse
-    let [current.start,current.end] = s:text_object_inner(a:visual, [current.start[0], 1], [current.end[0], 1], count1)
+    let [start,end] = s:text_object_inner(a:visual, [start[0], 1], [end[0], 1], count1)
+  endif
+  call s:dbg('TOI', 'Last Current: '.string([start,end]).', count1: '.count1)
+  if a:0
+    return [start,end]
   endif
 
-  call s:dbg('TOI', 'Last Current: '.string(current).', count1: '.count1)
-  if a:0
-    return [current.start,current.end]
-  endif
-  if a:visual
-    if current.end[0] >= current.start[0] && current.start[0] >= 1 && current.end[0] >= 1 && current.end[0] - current.start[0] > 1
+   " Let's return a mapping {{{
+   if a:visual
+    if end[0] >= start[0] && start[0] >= 1 && end[0] >= 1 && end[0] - start[0] > 1
       " Do visual magic
-      exec "normal! \<Esc>".(current.start[0] + 1).'G'
-      exec "normal! 0v".(current.end[0] - 1)."G$"
+      exec "normal! \<Esc>".(start[0] + 1).'G'
+      exec "normal! 0v".(end[0] - 1)."G$"
     endif
   else
-    if current.end[0] >= current.start[0] && current.start[0] >= 1 && current.end[0] >= 1 && current.end[0] - current.start[0] > 1
+    if end[0] >= start[0] && start[0] >= 1 && end[0] >= 1 && end[0] - start[0] > 1
       if v:operator =~? '^gu$'
         let to_end = '$h'
       else
         let to_end = '$'
       endif
       " Do operator pending magic
-      "exec 'normal! '.(current.start[0] + 1)
-      "      \ .'G0'.v:operator.':normal! v'.(current.end[0] - 1)."G".to_end."\<CR>"
+      "exec 'normal! '.(start[0] + 1)
+      "      \ .'G0'.v:operator.':normal! v'.(end[0] - 1)."G".to_end."\<CR>"
       "silent! call repeat#set(v:operator.s:dict[bufnr].innermap)
-      return ':exec "normal! '.(current.start[0] + 1).
-            \ 'G0v'.(current.end[0] - 1)."G".to_end."\"\<CR>".
+      return ':exec "normal! '.(start[0] + 1).
+            \ 'G0v'.(end[0] - 1)."G".to_end."\"\<CR>".
             \ ":silent! call repeat#set(v:operator.'".s:dict[bufnr].innermap."', ".
             \ count1.")\<CR>"
-
     else
       " No pair found, do nothing
       return "\<Esc>"
     endif
-  endif "}}}
+  endif
 endfunction "}}}2
 
 function! s:is_repeat(firstl, lastl, cfirstl, clastl, visual, recursive, original) "{{{2
