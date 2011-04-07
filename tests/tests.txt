@@ -125,6 +125,8 @@ vim_ge001.vim
 vim_ge002.vim
 # Check for redo using repeat.vim
 vim_ge003.vim
+# Ignore lines with |
+vim_ge004.vim
 
 # - Visual All                                   {{{1
 # Sample 2, go to 'if' and :norm vard, repeat on 'endif' and inside the block.

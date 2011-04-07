@@ -139,4 +139,8 @@ if this_line == too_big &&
 endif
 endfunction
 
-
+" Sample 9
+echo 1
+if 0
+  if 1 | echo 2 | else | echo3 | endif
+endif

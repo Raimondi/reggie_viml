@@ -11,7 +11,8 @@ set cpo&vim
 let b:reggie_to_skip =
       \ 'getline(".") =~ "^\\s*sy\\%[ntax]\\s\\+region" ||' .
       \ 'synIDattr(synID(line("."),col("."),1),"name") =~? '.
-      \ '"comment\\|string\\|vim\k\{-}var"'
+      \ '"comment\\|string\\|vim\k\{-}var" ||'              .
+      \ 'getline(".") =~ "|"'
 
 " Start of the block matches this
 let b:reggie_to_start = '\C\v^\s*\zs%('            .
