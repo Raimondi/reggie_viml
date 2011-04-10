@@ -122,7 +122,6 @@ function! reggie_to#init(...) "{{{2
     endfor
   endfor
 endfunction "}}}2
-
 function! s:get_dict() " {{{2
   if exists('b:reggie_to_start') && exists('b:reggie_to_end')
     let dict = {}
@@ -137,7 +136,6 @@ function! s:get_dict() " {{{2
     return {}
   endif
 endfunction "}}}2
-
 function! s:text_object_all(visual,...) range "{{{2
   let bufnr = bufnr('%')
   call s:info('TOA', 'Start: '.a:visual.','.string(a:000))
@@ -225,7 +223,6 @@ function! s:text_object_all(visual,...) range "{{{2
     endif
   endif
 endfunction " }}}2
-
 function! s:text_object_inner(visual, ...) range "{{{2
   let bufnr = bufnr('%')
   call s:info('TOI', 'Start: '.a:visual.','.(a:0 ? ','.join(a:000, ',') : '').')')
@@ -335,7 +332,6 @@ function! s:text_object_inner(visual, ...) range "{{{2
     endif
   endif
 endfunction "}}}2
-
 function! s:is_repeat(firstl, lastl, cfirstl, clastl, visual, recursive, original) "{{{2
   let bufnr = bufnr('%')
   call s:info('IR', "is_repeat(".string(a:firstl).','.string(a:lastl).','.string(a:cfirstl).','.string(a:clastl).','.string(a:visual).','.string(a:recursive).','.string(a:original).')')
@@ -391,7 +387,6 @@ function! s:is_repeat(firstl, lastl, cfirstl, clastl, visual, recursive, origina
   call s:dbg('IR', 'is_repeat: '.is_repeat.', is_block: '.is_block)
   return is_repeat
 endfunction "}}}2
-
 function! s:find_text_object(first, last, middle, ...) "{{{2
   let bufnr = bufnr('%')
   call s:info('FTO', 'Start: '.string(a:first).','.string(a:last).','.string(a:middle).join(a:000))
@@ -502,7 +497,6 @@ function! s:find_text_object(first, last, middle, ...) "{{{2
   "      \ string(last). ', spos: ' . spos . ', sflags: ' . sflags . ', epos: ' . epos . ', eflags: ' . eflags. '. middle_p: '.a:middle
   return result
 endfunction "}}}2
-
 function! s:is_match(line, part) " {{{2
   let bufnr = bufnr('%')
   call cursor(a:line, 1)
@@ -510,7 +504,6 @@ function! s:is_match(line, part) " {{{2
   call s:dbg('MA', result)
   return result
 endfunction " }}}2
-
 " Messages: {{{
 let s:verbose_quiet = 0
 let s:verbose_info  = 1
