@@ -1,4 +1,4 @@
-" File:        autoload/reggie_to.vim
+" File:        autoload/reggie_to.vim {{{1
 " Version:     1.0
 " Modified:    2011-02-22
 " Description: This plugin provides new text objects for keyword based blocks.
@@ -57,7 +57,6 @@ let loaded_reggie_to = '0.1a'
 if !exists('s:dict')
   let s:dict = {}
 endif "}}}1
-
 " Functions {{{1
 function! reggie_to#init(...) "{{{2
   let bufnr = bufnr('%')
@@ -224,6 +223,7 @@ function! s:text_object_all(visual,...) range "{{{2
   endif
 endfunction " }}}2
 function! s:text_object_inner(visual, ...) range "{{{2
+
   let bufnr = bufnr('%')
   call s:info('TOI', 'Start: '.a:visual.','.(a:0 ? ','.join(a:000, ',') : '').')')
 
@@ -388,6 +388,10 @@ function! s:is_repeat(firstl, lastl, cfirstl, clastl, visual, recursive, origina
   return is_repeat
 endfunction "}}}2
 function! s:find_text_object(first, last, middle, ...) "{{{2
+  " a:first : [line, column]
+  " a:last  : [line, column]
+  " a:middle: 'regexp'
+  " a:1     : NR -> a count
   let bufnr = bufnr('%')
   call s:info('FTO', 'Start: '.string(a:first).','.string(a:last).','.string(a:middle).join(a:000))
 
@@ -493,8 +497,6 @@ function! s:find_text_object(first, last, middle, ...) "{{{2
     endif
   endif "}}}
   call s:dbg('FTO', 'Result: '.string(result))
-  "      \ . ', first: ' . string(first) . ', last' .
-  "      \ string(last). ', spos: ' . spos . ', sflags: ' . sflags . ', epos: ' . epos . ', eflags: ' . eflags. '. middle_p: '.a:middle
   return result
 endfunction "}}}2
 function! s:is_match(line, part) " {{{2
@@ -504,6 +506,21 @@ function! s:is_match(line, part) " {{{2
   call s:dbg('MA', result)
   return result
 endfunction " }}}2
+function! reggie_to#ncursor(pos) "{{{2
+  " Get to the given line
+  let vmove = a:pos[0].'G'
+  let sline = split(getline(a:pos[0]), '\zs')
+  " Default to eol
+  let hmove = '$'
+  for i in range(0, len(sline))
+    if len(join(sline[: i ],'')) >= a:pos[1]
+      " Get to the given column
+      let hmove = 0.(i > 0 ? (len(sline[:i]) - 1).'l' : '')
+      break
+    endif
+  endfor
+  return vmove.hmove
+endfunction "}}}2
 " Messages: {{{
 let s:verbose_quiet = 0
 let s:verbose_info  = 1
