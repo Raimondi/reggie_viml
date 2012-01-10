@@ -1,14 +1,14 @@
-" FindFrom(pat, pos, forward, middle, ...) {{{1
+" FindFrom(pattern, pos, forward, middle, ...) {{{1
 " Look for a pair.
 " Returns position of match.
-" - pat: Dictionary with patterns and skip expression.
+" - pattern: Dictionary with patterns and skip expression.
 " - pos: A list in the format accepted by cursor().
 " - forward: Boolean.
 " - middle: Boolean
-function! FindFrom(pat, pos, forward, middle, ...)
+function! FindFrom(pattern, pos, forward, middle, ...)
   call cursor(a:pos)
   let f_b = a:forward ? '' : 'b'
-  let matchHere = FindAt(a:pat, a:pos)
+  let matchHere = FindAt(a:pattern, a:pos)
   if matchHere == 'start' && a:forward
     let f_c = ''
   elseif matchHere == 'middle'
@@ -19,12 +19,12 @@ function! FindFrom(pat, pos, forward, middle, ...)
     let f_c = a:0 && a:1 ? 'c' : ''
   endif
   let flags = 'Wn'.f_b.f_c
-  let middle = a:middle ? a:pat.middle : ''
-  let end = searchpairpos(a:pat.start, middle, a:pat.end, flags, a:pat.skip)
+  let middle = a:middle ? a:pattern.middle : ''
+  let end = searchpairpos(a:pattern.start, middle, a:pattern.end, flags, a:pattern.skip)
   return end
 endfunction "FindStart
 
-" IsInMatch(pat, pos) i{{{1
+" GetBoundary(pattern, pos) {{{1
 " Determine which pattern is found at the given position, if any.
 " Returns a dict with the following entries:
 "   - kind: Empty if no match found, otherwise the name of the pattern.
@@ -32,9 +32,9 @@ endfunction "FindStart
 "   - end: Boolean, true if the match ends at 'pos'.
 "   - first, last: positions of the start and the end of the match
 "     respectively.
-" pat: Dictionary with patterns and skip expression as used by searchpair().
+" pattern: Dictionary with patterns and skip expression as used by searchpair().
 " pos: A list in the format accepted by cursor().
-function! IsInMatch(pat, pos)
+function! GetBoundary(pattern, pos)
   let pos0 = Pos(a:pos)
   let res = NewBoundary()
   let res.start = 0
@@ -46,13 +46,13 @@ function! IsInMatch(pat, pos)
   endif
   " Position cursor
   call cursor(pos0)
-  for kind in filter(keys(a:pat), 'v:val != "skip" && v:val != ""')
-    let pos1 = searchpos(a:pat[kind], 'Wcb', 0, 100)
-    if pos1[0] == 0 || eval(a:pat.skip)
+  for kind in keys(filter(copy(a:pattern), 'v:key != "skip" && v:val != ""'))
+    let pos1 = searchpos(a:pattern[kind], 'Wcb', 0, 100)
+    if pos1[0] == 0 || eval(a:pattern.skip)
       call cursor(pos0)
       continue
     endif
-    let pos2 = searchpos(a:pat[kind], 'Wcne', 0, 100)
+    let pos2 = searchpos(a:pattern[kind], 'Wcne', 0, 100)
     if pos2[0] < pos0[0] || (pos2[0] == pos0[0] && pos2[1] < pos0[1])
       call cursor(pos0)
       continue
@@ -69,65 +69,65 @@ function! IsInMatch(pat, pos)
   let res.first = pos1
   let res.last = pos2
   return res
-endfunction "IsInMatch
+endfunction "GetBoundary
 
-" FindAt(pat, pos) {{{1
+" FindAt(pattern, pos) {{{1
 " Determine which pattern is found at the given position, if any.
 " Returns an empty string ('') if none found. If a match is found returns the
 " name of the matching pattern.
-" pat: Dictionary with patterns and skip expression.
+" pattern: Dictionary with patterns and skip expression.
 " pos: A list in the format accepted by cursor().
-function! FindAt(pat, pos)
+function! FindAt(pattern, pos)
   " Position cursor
   call cursor(a:pos)
   " Should the current position be skipped?
-  let skip = eval(a:pat.skip)
+  let skip = eval(a:pattern.skip)
   if skip
     return ''
   endif
-  for kind in filter(keys(a:pat), 'v:val != "skip" && v:val != ""')
-    if searchpos(a:pat[kind], "cn", line(".")) == a:pos[0:1]
+  for kind in keys(filter(copy(a:pattern), 'v:key != "skip" && v:val != ""'))
+    if searchpos(a:pattern[kind], "cn", line(".")) == a:pos[0:1]
       return kind
     endif
   endfor
   return ''
 endfunction "FindAt
 
-" FindTextObject(pat, pos, inner) {{{1
-function! FindTextObject(pat, pos, inner)
+" FindTextObject(pattern, pos, inner) {{{1
+function! FindTextObject(pattern, pos, inner)
   let to = NewTextObject()
-  let boundary = IsInMatch(a:pat, a:pos)
+  let boundary = GetBoundary(a:pattern, a:pos)
   if boundary.kind == 'start'
     let to.start.first = boundary.first
     let to.start.last = boundary.last
     let to.start.kind = boundary.kind
-    let to.end.first = FindFrom(a:pat, a:pos, 1, a:inner)
-    let boundary = IsInMatch(filter(copy(a:pat), 'v:key != "start"'), to.end.first)
+    let to.end.first = FindFrom(a:pattern, a:pos, 1, a:inner)
+    let boundary = GetBoundary(filter(copy(a:pattern), 'v:key != "start"'), to.end.first)
     let to.end.last = boundary.last
     let to.end.kind = boundary.kind
   elseif boundary.kind == 'middle' && a:inner
     let to.start.first = boundary.first
     let to.start.last = boundary.last
     let to.start.kind = boundary.kind
-    let to.end.first = FindFrom(a:pat, a:pos, 1, a:inner)
-    let boundary = IsInMatch(filter(copy(a:pat), 'v:key != "start"'), to.end.first)
+    let to.end.first = FindFrom(a:pattern, a:pos, 1, a:inner)
+    let boundary = GetBoundary(filter(copy(a:pattern), 'v:key != "start"'), to.end.first)
     let to.end.last = boundary.last
     let to.end.kind = boundary.kind
   elseif boundary.kind == 'end'
     let to.end.first = boundary.first
     let to.end.last = boundary.last
     let to.end.kind = boundary.kind
-    let to.start.first = FindFrom(a:pat, boundary.first, 0, a:inner)
-    let boundary = IsInMatch(filter(copy(a:pat), 'v:key != "end"'), to.start.first)
+    let to.start.first = FindFrom(a:pattern, boundary.first, 0, a:inner)
+    let boundary = GetBoundary(filter(copy(a:pattern), 'v:key != "end"'), to.start.first)
     let to.start.last = boundary.last
     let to.start.kind = boundary.kind
   else
-    let to.start.first = FindFrom(a:pat, a:pos, 0, a:inner)
-    let boundary = IsInMatch(filter(copy(a:pat), 'v:key != "end"'), to.start.first)
+    let to.start.first = FindFrom(a:pattern, a:pos, 0, a:inner)
+    let boundary = GetBoundary(filter(copy(a:pattern), 'v:key != "end"'), to.start.first)
     let to.start.last = boundary.last
     let to.start.kind = boundary.kind
-    let to.end.first = FindFrom(a:pat, a:pos, 1, a:inner)
-    let boundary = IsInMatch(filter(copy(a:pat), 'v:key != "start"'), to.end.first)
+    let to.end.first = FindFrom(a:pattern, a:pos, 1, a:inner)
+    let boundary = GetBoundary(filter(copy(a:pattern), 'v:key != "start"'), to.end.first)
     let to.end.last = boundary.last
     let to.end.kind = boundary.kind
   endif
@@ -135,10 +135,10 @@ function! FindTextObject(pat, pos, inner)
   return (to.start.first[0] > 0 && to.end.first[0] > 0) ? to : {}
 endfunction "FindTextObject
 
-" MatchEnd(pat, pos) {{{1
-function! MatchEnd(pat, pos)
+" MatchEnd(pattern, pos) {{{1
+function! MatchEnd(pattern, pos)
   call cursor(a:pos)
-  return searchpos(a:pat, 'Wnce')
+  return searchpos(a:pattern, 'Wnce')
 endfunction "MatchEnd
 
 " SetMarks(pos1, pos2) "{{{1
@@ -205,11 +205,11 @@ function! ReggieTextObj(dict, visual, inner, ...)
     let pos2 = Pos(getpos("'>"))
     echom '* pos1: '.string(pos1)
     echom '* pos2: '.string(pos2)
-    let to = GetTextObjectFromArea(a:dict.pat, pos1, pos2, inner)
+    let to = GetTextObjectFromArea(a:dict.pattern, pos1, pos2, inner)
     echom '* From area.'
   else
     let pos1 = Pos(getpos('.'))
-    let to = FindTextObject(a:dict.pat, pos1, inner)
+    let to = FindTextObject(a:dict.pattern, pos1, inner)
   endif
   if empty(to)
     return CancelAction(a:visual)
@@ -223,7 +223,7 @@ function! ReggieTextObj(dict, visual, inner, ...)
     echom '* Dict: '
     if to.orig.start == to.final.start && to.orig.end == to.final.end ||
           \ Contains(to.orig, to.final)
-      let to = ExpandTextObject(a:dict.pat, to, a:visual, inner)
+      let to = ExpandTextObject(a:dict.pattern, to, a:visual, inner)
       echom '* Dict: '
       if empty(to)
         return CancelAction(a:visual)
@@ -238,7 +238,7 @@ function! ReggieTextObj(dict, visual, inner, ...)
   endif
   for i in range(repeat)
     echom '* repeating ' . (i + 1)
-    let to_temp = ExpandTextObject(a:dict.pat, to, a:visual, inner)
+    let to_temp = ExpandTextObject(a:dict.pattern, to, a:visual, inner)
     if empty(to_temp)
       break
     endif
@@ -261,19 +261,19 @@ function! ReggieTextObj(dict, visual, inner, ...)
   return last_command.ex_command
 endfunction "ReggieTextObj
 
-" GetTextObjectFromArea(pat, pos1, pos2, inner) "{{{1
+" GetTextObjectFromArea(pattern, pos1, pos2, inner) "{{{1
 " Ditto.
-function! GetTextObjectFromArea(pat, pos1, pos2, inner)
+function! GetTextObjectFromArea(pattern, pos1, pos2, inner)
   if a:pos1 == a:pos2
-    return FindTextObject(a:pat, a:pos1, a:inner)
+    return FindTextObject(a:pattern, a:pos1, a:inner)
   endif
-  let to1 = FindTextObject(a:pat, a:pos1, a:inner)
-  let to2 = FindTextObject(a:pat, a:pos2, a:inner)
+  let to1 = FindTextObject(a:pattern, a:pos1, a:inner)
+  let to2 = FindTextObject(a:pattern, a:pos2, a:inner)
   echom '* GetTextFromArea'
   let to = ChooseTextObject(to1, to2)
   if empty(to) && !empty(to1) && !empty(to2) &&
         \ to1.end.kind == 'middle' && to2.start.kind == 'middle'
-    let to_all = FindTextObject(a:pat, a:pos1, 0)
+    let to_all = FindTextObject(a:pattern, a:pos1, 0)
     echom '* Repeat on middles'
     if ContainsOrEqual(to_all, to1) && ContainsOrEqual(to_all, to2)
       let to = to1
@@ -435,22 +435,22 @@ function! CancelAction(visual)
   return a:visual ? '' : "\<Esc>"
 endfunction "CancelAction
 
-" ExpandTextObject(pat, to, visual, inner) "{{{1
+" ExpandTextObject(pattern, to, visual, inner) "{{{1
 " Find a container text object, if any.
-function! ExpandTextObject(pat, to, visual, inner)
+function! ExpandTextObject(pattern, to, visual, inner)
   echom '* ETO.a:to: '
   echom string(a:to)
   let to = NewTextObject(a:to)
   echom '* ETO2'
   if a:to.kind == 'top' || a:to.kind == 'middle'
     let to.start = a:to.start
-    let to.end = ExpandBoundary(a:pat, a:to.end, 1, a:visual, 1)
+    let to.end = PushBoundary(a:pattern, a:to.end, 1, a:visual, 1)
   elseif a:to.kind == 'bottom'
-    let to.start = ExpandBoundary(a:pat, a:to.start, 0, a:visual, 1)
+    let to.start = PushBoundary(a:pattern, a:to.start, 0, a:visual, 1)
     let to.end = a:to.end
   elseif a:to.kind == 'whole'
-    let to.start = ExpandBoundary(a:pat, a:to.start, 0, a:visual, 1)
-    let to.end = ExpandBoundary(a:pat, a:to.end, 1, a:visual, 1)
+    let to.start = PushBoundary(a:pattern, a:to.start, 0, a:visual, 1)
+    let to.end = PushBoundary(a:pattern, a:to.end, 1, a:visual, 1)
   else
     return {}
   endif
@@ -462,20 +462,20 @@ function! ExpandTextObject(pat, to, visual, inner)
   return to
 endfunction "ExpandTextObject
 
-" ExpandBoundary(pat, to, forward, visual) "{{{1
+" PushBoundary(pattern, to, forward, visual) "{{{1
 " Expand boundary of the given text object.
-function! ExpandBoundary(pat, boundary, forward, visual, inner)
+function! PushBoundary(pattern, boundary, forward, visual, inner)
   let boundary = NewBoundary(a:boundary)
-  let boundary.first = FindFrom(a:pat, a:boundary.first, a:forward, a:inner, 0)
+  let boundary.first = FindFrom(a:pattern, a:boundary.first, a:forward, a:inner, 0)
   if boundary.first[0] == 0
     return a:boundary
   else
-    let boundary_temp = IsInMatch(a:pat, boundary.first)
+    let boundary_temp = GetBoundary(a:pattern, boundary.first)
     let boundary.last = boundary_temp.last
     let boundary.kind = boundary_temp.kind
     return boundary
   endif
-endfunction "ExpandTop
+endfunction "PushBoundary
 
 " NewBoundary(...) "{{{1
 " Returns a new boundary, if a boundary is given it will be merged.
@@ -503,27 +503,65 @@ function! TextObjectKind(to)
   endif
 endfunction "TextObjectKind
 
+" NewTextObjectDict(...) "{{{1
+" Returns a dict with all the stuff needed to handle a set of text objects.
+function! NewTextObjectDict(...)
+  let d = {}
+  " NewTextObject(...) "{{{2
+  " Returns a new text object, if a dict is given the keys will be merged with
+  " exception of the 'start', 'end' and 'post_processed'.
+  function! d.NewTextObject(...) dict
+    let to = {'start': NewBoundary(),
+          \ 'end': NewBoundary(),
+          \ 'orig': {'start': 0, 'end': 0},
+          \ 'final': {'start': 0, 'end': 0},
+          \ 'kind': '',
+          \ 'post_processed': 0}
+    return a:0 ? extend(copy(a:1), to, 'force') : to
+  endfunction "NewTextObject
+
+  let d.Pos = function('Pos')
+  let d.Gpos = function('Gpos')
+  let d.BeforeThan = function('BeforeThan')
+  let d.BeforeThanOrEqualTo = function('BeforeThanOrEqualTo')
+  let d.AfterThan = function('AfterThan')
+  let d.AfterThanOrEqualTo = function('AfterThanOrEqualTo')
+endfunction "NewTextObjectDict
+
+" NewBase() "{{{1
+" Get a dict with the basic stuff.
+function! NewBase()
+  let d = {}
+  let d.Pos = function('Pos')
+  let d.Gpos = function('Gpos')
+  let d.BeforeThan = function('BeforeThan')
+  let d.BeforeThanOrEqualTo = function('BeforeThanOrEqualTo')
+  let d.AfterThan = function('AfterThan')
+  let d.AfterThanOrEqualTo = function('AfterThanOrEqualTo')
+
+endfunction "NewBase
+
 " Temporal stuff {{{1
 " Patterns' dict
-let pat = {}
+let pattern = {}
 " VimL settings:
-let pat.skip =
+let pattern.skip =
       \ 'getline(".") =~ "^\\s*sy\\%[ntax]\\s\\+region" ||' .
       \ 'synIDattr(synID(line("."),col("."),1),"name") =~? '.
       \ '"\\mcomment\\|string\\|vim\k\{-}var"'
 " Start of the block matches this
-let pat.start = '\C\m\%(^\||\)\s*\zs\%('.
+let pattern.start = '\C\m\%(^\||\)\s*\zs\%('.
       \ '\<fu\%[nction]\>\|\<\%(wh\%[ile]\|for\)\>\|\<if\>\|\<try\>\|'.
       \ '\<aug\%[roup]\s\+\%(END\>\)\@!\S'.
       \ '\)'
 " Middle of the block matches this
-let pat.middle = '\C\m\%(^\||\)\s*\zs\%(\<el\%[seif]\>\|\<cat\%[ch]\>\|\<fina\%[lly]\>\)'
+let pattern.middle = '\C\m\%(^\||\)\s*\zs\%(\<el\%[seif]\>\|\<cat\%[ch]\>\|\<fina\%[lly]\>\)'
 " End of the block matches this
-let pat.end =
+let pattern.end =
       \ '\C\m\%(^\||\)\s*\zs\%(\<endf\%[unction]\>\|\<end\%(w\%[hile]\|fo\%[r]\)\>\|'.
       \ '\<en\%[dif]\>\|\<endt\%[ry]\>\|\<aug\%[roup]\s\+END\>\)'
 let dict = {}
-let dict.pat = pat
+let dict.pattern = pattern
 let dict.intersect_txtobjs = 0
 onoremap <expr> ax ReggieTextObj(dict, 0, 0)
 onoremap <expr> ix ReggieTextObj(dict, 0, 1)
