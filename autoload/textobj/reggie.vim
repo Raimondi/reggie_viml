@@ -1,515 +1,3 @@
-" Old code {{{9
-" FindFrom(pattern, pos, forward, middle, ...) {{{16
-" Look for a pair.
-" Returns position of match.
-" - pattern: Dictionary with patterns and skip expression.
-" - pos: A list in the format accepted by cursor().
-" - forward: Boolean.
-" - middle: Boolean
-function! FindFrom(pattern, pos, forward, middle, ...)
-  call cursor(a:pos)
-  let f_b = a:forward ? '' : 'b'
-  let matchHere = FindAt(a:pattern, a:pos)
-  if matchHere == 'start' && a:forward
-    let f_c = ''
-  elseif matchHere == 'middle'
-    let f_c = ''
-  elseif matchHere == 'end' && !a:forward
-    let f_c = ''
-  else
-    let f_c = a:0 && a:1 ? 'c' : ''
-  endif
-  let flags = 'Wn'.f_b.f_c
-  let middle = a:middle ? a:pattern.middle : ''
-  let end = searchpairpos(a:pattern.start, middle, a:pattern.end, flags, a:pattern.skip)
-  return end
-endfunction "FindStart
-
-" GetBoundary(pattern, pos) {{{16
-" Determine which pattern is found at the given position, if any.
-" Returns a dict with the following entries:
-"   - kind: Empty if no match found, otherwise the name of the pattern.
-"   - start: Boolean, true if the match starts at 'pos'.
-"   - end: Boolean, true if the match ends at 'pos'.
-"   - first, last: positions of the start and the end of the match
-"     respectively.
-" pattern: Dictionary with patterns and skip expression as used by searchpair().
-" pos: A list in the format accepted by cursor().
-function! GetBoundary(pattern, pos)
-  let pos0 = Pos(a:pos)
-  let res = NewBoundary()
-  let res.start = 0
-  let res.end = 0
-  let in = 0
-  if pos0[0] == 0
-    "echoe '"'.string(pos0).'" is not a valid position!'
-    return res
-  endif
-  " Position cursor
-  call cursor(pos0)
-  for kind in keys(filter(copy(a:pattern), 'v:key != "skip" && v:val != ""'))
-    let pos1 = searchpos(a:pattern[kind], 'Wcb', 0, 100)
-    if pos1[0] == 0 || eval(a:pattern.skip)
-      call cursor(pos0)
-      continue
-    endif
-    let pos2 = searchpos(a:pattern[kind], 'Wcne', 0, 100)
-    if pos2[0] < pos0[0] || (pos2[0] == pos0[0] && pos2[1] < pos0[1])
-      call cursor(pos0)
-      continue
-    endif
-    let in = 1
-    break
-  endfor
-  if !in
-    return res
-  endif
-  let res.kind = kind
-  let res.start = pos1 == pos0
-  let res.end = pos2 == pos0
-  let res.first = pos1
-  let res.last = pos2
-  return res
-endfunction "GetBoundary
-
-" FindAt(pattern, pos) {{{16
-" Determine which pattern is found at the given position, if any.
-" Returns an empty string ('') if none found. If a match is found returns the
-" name of the matching pattern.
-" pattern: Dictionary with patterns and skip expression.
-" pos: A list in the format accepted by cursor().
-function! FindAt(pattern, pos)
-  " Position cursor
-  call cursor(a:pos)
-  " Should the current position be skipped?
-  let skip = eval(a:pattern.skip)
-  if skip
-    return ''
-  endif
-  for kind in keys(filter(copy(a:pattern), 'v:key != "skip" && v:val != ""'))
-    if searchpos(a:pattern[kind], "cn", line(".")) == a:pos[0:1]
-      return kind
-    endif
-  endfor
-  return ''
-endfunction "FindAt
-
-" FindTextObject(pattern, pos, inner) {{{16
-function! FindTextObject(pattern, pos, inner)
-  let to = NewTextObject()
-  let boundary = GetBoundary(a:pattern, a:pos)
-  if boundary.kind == 'start'
-    let to.start.first = boundary.first
-    let to.start.last = boundary.last
-    let to.start.kind = boundary.kind
-    let to.end.first = FindFrom(a:pattern, a:pos, 1, a:inner)
-    let boundary = GetBoundary(filter(copy(a:pattern), 'v:key != "start"'), to.end.first)
-    let to.end.last = boundary.last
-    let to.end.kind = boundary.kind
-  elseif boundary.kind == 'middle' && a:inner
-    let to.start.first = boundary.first
-    let to.start.last = boundary.last
-    let to.start.kind = boundary.kind
-    let to.end.first = FindFrom(a:pattern, a:pos, 1, a:inner)
-    let boundary = GetBoundary(filter(copy(a:pattern), 'v:key != "start"'), to.end.first)
-    let to.end.last = boundary.last
-    let to.end.kind = boundary.kind
-  elseif boundary.kind == 'end'
-    let to.end.first = boundary.first
-    let to.end.last = boundary.last
-    let to.end.kind = boundary.kind
-    let to.start.first = FindFrom(a:pattern, boundary.first, 0, a:inner)
-    let boundary = GetBoundary(filter(copy(a:pattern), 'v:key != "end"'), to.start.first)
-    let to.start.last = boundary.last
-    let to.start.kind = boundary.kind
-  else
-    let to.start.first = FindFrom(a:pattern, a:pos, 0, a:inner)
-    let boundary = GetBoundary(filter(copy(a:pattern), 'v:key != "end"'), to.start.first)
-    let to.start.last = boundary.last
-    let to.start.kind = boundary.kind
-    let to.end.first = FindFrom(a:pattern, a:pos, 1, a:inner)
-    let boundary = GetBoundary(filter(copy(a:pattern), 'v:key != "start"'), to.end.first)
-    let to.end.last = boundary.last
-    let to.end.kind = boundary.kind
-  endif
-  let to.kind = TextObjectKind(to)
-  return (to.start.first[0] > 0 && to.end.first[0] > 0) ? to : {}
-endfunction "FindTextObject
-
-" SetMarks(pos1, pos2) "{{{16
-" Set the `[ and `] marks.
-" - pos1, pos2: List
-function! SetMarks(pos1, pos2)
-  "let gpos1 = [0] + a:pos1 + [0]
-  "let gpos2 = [0] + a:pos2 + [0]
-  let result1 = setpos("'[", Gpos(a:pos1)) + 1
-  let result2 = setpos("']", Gpos(a:pos2)) + 1
-  return result1 && result2
-endfunction "SetMarks
-
-" Pos(pos) "{{{16
-" Returns a list in the format [line, col]
-" - pos: List.
-function! Pos(pos)
-  let len = len(a:pos)
-  if len == 2
-    return a:pos
-  elseif len == 3
-    return a:pos[0:1]
-  elseif len == 4
-    return a:pos[1:2]
-  else
-    return[0,0]
-  endif
-endfunction "Pos
-
-" Gpos(pos) "{{{16
-" Returns a list in the format used by setpos().
-" - pos: List.
-function! Gpos(pos)
-  let len = len(a:pos)
-  if len == 2
-    return [0] + a:pos + [0]
-  elseif len == 3
-    return [0] + a:pos
-  elseif len == 4
-    return a:pos
-  else
-    return[0,0,0,0]
-  endif
-endfunction "Gpos
-
-" ReggieTextObj(dict, visual, inner) "{{{16
-" Finds a text object and returns an ex command to select it.
-" - dict: Dictionary.
-" - visual: Boolean. True for visual mappings.
-" - inner: Boolean. True for 'inner' text objects.
-function! ReggieTextObj(dict, visual, inner, ...)
-  let s:saved_view = winsaveview()
-  if !exists('g:log')
-    let g:log = ''
-  endif
-  redir => g:log
-  echom '* * '.strftime('%c')
-  let last_command = {}
-  let inner = get(a:dict, 'force_middle', 0) ? 1 : a:inner
-  if a:visual
-    " We could be starting from a visual area bigger than one char, so we need
-    " to do some extra magic to handle that case.
-    let pos1 = Pos(getpos("'<"))
-    let pos2 = Pos(getpos("'>"))
-    echom '* pos1: '.string(pos1)
-    echom '* pos2: '.string(pos2)
-    let to = GetTextObjectFromArea(a:dict.pattern, pos1, pos2, inner)
-    echom '* From area.'
-  else
-    let pos1 = Pos(getpos('.'))
-    let to = FindTextObject(a:dict.pattern, pos1, inner)
-  endif
-  if empty(to)
-    return CancelAction(a:visual)
-  endif
-  let to.orig.start = pos1
-  let to.orig.end = a:visual ? pos2 : pos1
-  if a:visual
-    if !PostProcessTextObject(a:dict, to, a:visual, inner)
-      return CancelAction(a:visual)
-    endif
-    echom '* Dict: '
-    if to.orig.start == to.final.start && to.orig.end == to.final.end ||
-          \ Contains(to.orig, to.final)
-      let to = ExpandTextObject(a:dict.pattern, to, a:visual, inner)
-      echom '* Dict: '
-      if empty(to)
-        return CancelAction(a:visual)
-      endif
-    endif
-  endif
-  " Handle a given count.
-  if a:visual
-    let repeat = v:prevcount == 0 ? 0 : v:prevcount - 1
-  else
-    let repeat = v:count1 - 1
-  endif
-  for i in range(repeat)
-    echom '* repeating ' . (i + 1)
-    let to_temp = ExpandTextObject(a:dict.pattern, to, a:visual, inner)
-    if empty(to_temp)
-      break
-    endif
-    let to = to_temp
-  endfor
-  if !to.post_processed && !PostProcessTextObject(a:dict, to, a:visual, inner)
-    return CancelAction(a:visual)
-  endif
-  let mode = a:0 ? a:1 : 'v'
-  let last_command.to = to
-  call SetMarks(to.final.start, to.final.end)
-  if a:visual
-    let last_command.ex_command = "normal! `[".mode."`]"
-  else
-    let last_command.ex_command = ":\<C-U>".'exec "normal! `['.mode.'`]"'."\<CR>"
-  endif
-  echom last_command.ex_command
-  redir END
-  call winrestview(s:saved_view)
-  return last_command.ex_command
-endfunction "ReggieTextObj
-
-" GetTextObjectFromArea(pattern, pos1, pos2, inner) "{{{16
-" Ditto.
-function! GetTextObjectFromArea(pattern, pos1, pos2, inner)
-  if a:pos1 == a:pos2
-    return FindTextObject(a:pattern, a:pos1, a:inner)
-  endif
-  let to1 = FindTextObject(a:pattern, a:pos1, a:inner)
-  let to2 = FindTextObject(a:pattern, a:pos2, a:inner)
-  echom '* GetTextFromArea'
-  let to = ChooseTextObject(to1, to2)
-  if empty(to) && !empty(to1) && !empty(to2) &&
-        \ to1.end.kind == 'middle' && to2.start.kind == 'middle'
-    let to_all = FindTextObject(a:pattern, a:pos1, 0)
-    echom '* Repeat on middles'
-    if ContainsOrEqual(to_all, to1) && ContainsOrEqual(to_all, to2)
-      let to = to1
-      let to.end = to2.end
-      let to.kind = TextObjectKind(to)
-    else
-      return {}
-    endif
-  endif
-  if empty(to)
-    return {}
-  endif
-  return to
-endfunction "GetTextObjectFromArea
-
-" NewTextObject(...) "{{{16
-" Returns a new text object, if a dict is given the keys will be merged with
-" exception of the 'start', 'end' and 'post_processed'.
-function! NewTextObject(...)
-  let to = {'start': NewBoundary(),
-        \ 'end': NewBoundary(),
-        \ 'orig': {'start': 0, 'end': 0},
-        \ 'final': {'start': 0, 'end': 0},
-        \ 'kind': '',
-        \ 'post_processed': 0}
-  return a:0 ? extend(copy(a:1), to, 'force') : to
-endfunction "NewTextObject
-
-" ChooseTextObject(to1, to2) "{{{16
-" Choose the text object that contains the other, if any.
-function! ChooseTextObject(to1, to2)
-  if empty(a:to1) || empty(a:to2)
-    return {}
-  endif
-  if a:to1 == a:to2
-    return a:to1
-  endif
-  let area1 = {'start': a:to1.start.first, 'end': a:to1.end.last}
-  let area2 = {'start': a:to2.start.first, 'end': a:to2.end.last}
-  if Contains(area1, area2)
-    return a:to1
-  elseif Contains(area2, area1)
-    return a:to2
-  else
-    return {}
-  endif
-endfunction "ChooseTextObject
-
-" BeforeThan(pos1, pos2) "{{{16
-" Return 1 if pos1 is before pos2, 0 otherwise.
-function! BeforeThan(pos1, pos2)
-  let pos1 = Pos(a:pos1)
-  let pos2 = Pos(a:pos2)
-  return pos1[0] < pos2[0] ||
-        \ (pos1[0] == pos2[0] && pos1[1] < pos2[1])
-endfunction "BeforeThan
-
-" BeforeThanOrEqualTo(pos1, pos2) "{{{16
-" Return 1 if pos1 is before pos2, 0 otherwise.
-function! BeforeThanOrEqualTo(pos1, pos2)
-  let pos1 = Pos(a:pos1)
-  let pos2 = Pos(a:pos2)
-  return BeforeThan(pos1, pos2) ||
-        \ pos1 == pos2
-endfunction "BeforeThanOrEqualTo
-
-" AfterThan(pos1, pos2) "{{{16
-" Returns 1 if pos1 is after pos2, 0 otherwise.
-function! AfterThan(pos1, pos2)
-  let pos1 = Pos(a:pos1)
-  let pos2 = Pos(a:pos2)
-  return BeforeThan(pos2, pos1)
-endfunction "AfterThan
-
-" AfterThanOrEqualTo(pos1, pos2) "{{{16
-" Returns 1 if pos1 is after pos2, 0 otherwise.
-function! AfterThanOrEqualTo(pos1, pos2)
-  let pos1 = Pos(a:pos1)
-  let pos2 = Pos(a:pos2)
-  return BeforeThan(pos2, pos1) ||
-        \ pos1 == pos2
-endfunction "AfterThanOrEqualTo
-
-" Contains(area1, area2) "{{{16
-" Returns 1 if obj1 contains obj2, 0 otherwise.
-" - obj1, obj2: Dictionaries with two entries named 'start' and 'end'.
-function! Contains(obj1, obj2)
-  if type(a:obj1.end) == type([])
-    let obj1 = map(copy(a:obj1), 'Pos(v:val)')
-    let obj2 = map(copy(a:obj2), 'Pos(v:val)')
-    return BeforeThan(obj1.start, obj2.start) &&
-          \ AfterThan(obj1.end, obj2.end)
-  elseif type(a:obj1.end) == type({})
-    return BeforeThan(a:obj1.start.last, a:obj2.start.first) &&
-          \ AfterThan(a:obj1.end.first, a:obj2.end.last)
-  endif
-endfunction "Contains
-
-" ContainsOrEqual(area1, area2) "{{{16
-" Returns 1 if obj1 contains obj2, 0 otherwise.
-" - obj1, obj2: Dictionaries with two entries named 'start' and 'end'.
-function! ContainsOrEqual(obj1, obj2)
-  if type(a:obj1.end) == type([])
-    let obj1 = map(copy(a:obj1), 'Pos(v:val)')
-    let obj2 = map(copy(a:obj2), 'Pos(v:val)')
-    return BeforeThanOrEqualTo(obj1.start, obj2.start) &&
-          \ AfterThanOrEqualTo(obj1.end, obj2.end)
-  elseif type(a:obj1.end) == type({})
-    return BeforeThanOrEqualTo(a:obj1.start.first, a:obj2.start.first) &&
-          \ AfterThanOrEqualTo(a:obj1.end.last, a:obj2.end.last)
-  endif
-endfunction "ContainsOrEqual
-
-" PostProcessTextObject(dict, to, visual, inner) "{{{16
-" description
-function! PostProcessTextObject(dict, to, visual, inner) abort
-  let a:to.post_processed = 1
-  "return [a:to.start.first, a:to.end.last]
-  if a:inner
-    call PostProcessInner(a:dict, a:to, a:visual)
-  else
-    call PostProcessAll(a:dict, a:to, a:visual)
-  endif
-  echom '* Postprocessed.'
-  if BeforeThan(a:to.final.start, a:to.final.end)
-    return 1
-  else
-    return 0
-  end
-endfunction "PostProcessTextObject
-
-" PostProcessAll(dict, to, visual) "{{{16
-"
-function! PostProcessAll(dict, to, visual)
-  let a:to.final.start = copy(a:to.start.first)
-  let a:to.final.end = copy(a:to.end.last)
-endfunction "PostProcessAll
-
-" PostProcessInner(dict, to, visual) "{{{16
-"
-function! PostProcessInner(dict, to, visual)
-  if len(getline(a:to.start.last[0])) > a:to.start.last[1]
-    let a:to.final.start = [a:to.start.last[0], a:to.start.last[1] + 1]
-  else
-    let a:to.final.start = [a:to.start.last[0] + 1, 1]
-  endif
-  if a:to.end.first[1] > 1
-    let a:to.final.end = [a:to.end.first[0], a:to.end.first[1] - 1]
-  else
-    let a:to.final.end = [a:to.end.first[0] - 1, len(getline(a:to.end.first[0] - 1))]
-  endif
-endfunction "PostProcessInner
-
-" CancelAction(visual) "{{{16
-" Return a string that will cancel the action.
-function! CancelAction(visual)
-  call winrestview(s:saved_view)
-  redir END
-  return a:visual ? '' : "\<Esc>"
-endfunction "CancelAction
-
-" ExpandTextObject(pattern, to, visual, inner) "{{{16
-" Find a container text object, if any.
-function! ExpandTextObject(pattern, to, visual, inner)
-  echom '* ETO.a:to: '
-  echom string(a:to)
-  let to = NewTextObject(a:to)
-  echom '* ETO2'
-  if a:to.kind == 'top' || a:to.kind == 'middle'
-    let to.start = a:to.start
-    let to.end = PushBoundary(a:pattern, a:to.end, 1, a:visual, a:inner)
-  elseif a:to.kind == 'bottom'
-    let to.start = PushBoundary(a:pattern, a:to.start, 0, a:visual, a:inner)
-    let to.end = a:to.end
-  elseif a:to.kind == 'whole'
-    let to.start = PushBoundary(a:pattern, a:to.start, 0, a:visual, a:inner)
-    let to.end = PushBoundary(a:pattern, a:to.end, 1, a:visual, a:inner)
-  else
-    return {}
-  endif
-  if to.start == a:to.start && to.end == a:to.end
-    return {}
-  endif
-  let to.kind = TextObjectKind(to)
-  echom string(a:to)
-  return to
-endfunction "ExpandTextObject
-
-" PushBoundary(pattern, boundary, forward, visual, inner) "{{{16
-" Expand boundary of the given text object.
-function! PushBoundary(pattern, boundary, forward, visual, inner)
-  let boundary = NewBoundary(a:boundary)
-  let boundary.first = FindFrom(a:pattern, a:boundary.first, a:forward, a:inner, 0)
-  if boundary.first[0] == 0
-    return a:boundary
-  else
-    let boundary_temp = GetBoundary(a:pattern, boundary.first)
-    let boundary.last = boundary_temp.last
-    let boundary.kind = boundary_temp.kind
-    return boundary
-  endif
-endfunction "PushBoundary
-
-" NewBoundary(...) "{{{16
-" Returns a new boundary, if a boundary is given it will be merged.
-function! NewBoundary(...)
-  let boundary = {
-        \ 'first': [0,0],
-        \ 'last': [0,0],
-        \ 'kind': ''}
-  return a:0 ? extend(copy(a:1), boundary, 'force') : boundary
-endfunction "NewBoundary
-
-" TextObjectKind(to) "{{{16
-" Checks what kind of text objects was given.
-function! TextObjectKind(to)
-  if a:to.start.kind == 'start' && a:to.end.kind == 'middle'
-    return 'top'
-  elseif a:to.start.kind == 'middle' && a:to.end.kind == 'end'
-    return 'bottom'
-  elseif a:to.start.kind == 'middle' && a:to.end.kind == 'middle'
-    return 'middle'
-  elseif a:to.start.kind == 'start' && a:to.end.kind == 'end'
-    return 'whole'
-  else
-    return ''
-  endif
-endfunction "TextObjectKind
-
-" NewTextObjectDict(...) "{{{16
-" Returns a dict with all the stuff needed to handle a set of text objects.
-function! NewTextObjectDict(...)
-  let d = {}
-  let d.Pos = function('Pos')
-  let d.Gpos = function('Gpos')
-  let d.BeforeThan = function('BeforeThan')
-  let d.BeforeThanOrEqualTo = function('BeforeThanOrEqualTo')
-  let d.AfterThan = function('AfterThan')
-  let d.AfterThanOrEqualTo = function('AfterThanOrEqualTo')
-endfunction "NewTextObjectDict
-
 " Text-object objects framework {{{1
 " Define position object {{{2
 let p = {}
@@ -535,6 +23,18 @@ endfunction "p.init
 function! p.to_s() dict abort
   return '{Class: Position => ' . string(self.position()) . '}'
 endfunction "p.to_s
+
+" p.to_l() dict abort "{{{3
+" Return a list representation.
+function! p.to_l() dict abort
+  return self.position()
+endfunction "p.to_l
+
+" p.to_d() dict abort "{{{3
+" Returns dictionary representation.
+function! p.to_d() dict abort
+  return {'line': self.line(), 'column': self.column()}
+endfunction "p.to_d
 
 " p.position(...) dict abort "{{{3
 " Get position in [line, column] format, if an argument is given the position will be
@@ -674,6 +174,24 @@ function! a.to_s() dict abort
   return '{Class: Area => Start: ' . self.start().to_s() . ', End: ' . self.end().to_s() . '}'
 endfunction "a.to_s
 
+" a.to_l() dict abort "{{{3
+" Returns list representation.
+function! a.to_l() dict abort
+  return [self.start().to_l(), self.end().to_l()]
+endfunction "a.to_l
+
+" a.to_d() dict abort "{{{3
+" Returns dictionary representation.
+function! a.to_d() dict abort
+  return {'start': self.start().to_d(), 'end': self.end().to_d()}
+endfunction "a.to_d
+
+" a.to_dl() dict abort "{{{3
+" Returns dictionary representation.
+function! a.to_dl() dict abort
+  return {'start': self.start().to_l(), 'end': self.end().to_l()}
+endfunction "a.to_dl
+
 " a.valid() dict abort "{{{3
 " Ditto
 function! a.valid() dict abort
@@ -744,6 +262,24 @@ endfunction "b.init
 function! b.to_s() dict abort
   return '{Class: Boundary => First: ' . self.first().to_s() . ', Last: ' . self.last().to_s() . '}'
 endfunction "b.to_s
+
+" b.to_l() dict abort "{{{3
+" Returns list representation.
+function! b.to_l() dict abort
+  return [self.first().to_l(), self.last().to_l()]
+endfunction "b.to_l
+
+" b.to_d() dict abort "{{{3
+" Returns dictionary representation.
+function! b.to_d() dict abort
+  return {'first': self.first().to_d(), 'last': self.last().to_d()}
+endfunction "b.to_d
+
+" b.to_dl() dict abort "{{{3
+" Returns dictionary representation.
+function! b.to_dl() dict abort
+  return {'first': self.first().to_l(), 'last': self.last().to_l()}
+endfunction "b.to_dl
 
 " b.valid() dict abort "{{{3
 " Ditto
@@ -826,6 +362,24 @@ function! t.to_s() dict abort
   return '{Class: Text-Object => Start: ' . self.start().to_s() . ', End: ' . self.end().to_s() . '}'
 endfunction "t.to_s
 
+" t.to_l() dict abort "{{{3
+" Returns list representation.
+function! t.to_l() dict abort
+  return [self.start().to_l(), self.end().to_l()]
+endfunction "t.to_l
+
+" t.to_d() dict abort "{{{3
+" Returns dictionary representation.
+function! t.to_d() dict abort
+  return {'start': self.start().to_d(), 'end': self.end().to_d()}
+endfunction "t.to_d
+
+" t.to_dl() dict abort "{{{3
+" Returns a dictionary and list representation.
+function! t.to_dl() dict abort
+  return {'start': self.start().to_dl(), 'end': self.end().to_dl()}
+endfunction "t.to_dl
+
 " t.valid() dict abort "{{{3
 " Ditto
 function! t.valid() dict
@@ -879,7 +433,8 @@ let r.templates.text_object = t
 " r.new(object) dict abort "{{{3
 " Returns a new object.
 function! r.new(object, ...) dict
-  let obj = copy(get(self.templates, a:object, {}))
+  let object = substitute(a:object, '\W', '_', 'g')
+  let obj = copy(get(self.templates, object, {}))
   if empty(obj)
     echoe 'There is no template for "'.a:object.'"!'
     return
@@ -936,6 +491,25 @@ function! c.get_positions(options) dict
   echom 'c.gp: area => ' . area.to_s()
   return [area.start().to_gpos(), area.end().to_gpos()]
 endfunction "c.get_positions
+
+" c.post_process_text_object(to, options) dict abort "{{{3
+" Ditto
+function! c.post_process_text_object(to, options) dict abort
+  let type = self.root.systems[a:options.id].post_processor_arg_type
+   if type == 'o'
+     let arg = a:to
+   elseif type == 'l'
+     let arg = a:to.to_l()
+   elseif type == 'd'
+     let arg = a:to.to_d()
+   elseif type == 'm'
+     let arg = a:to.to_dl()
+   else
+     echoe 'Post-Process Text Object: This should be seen, ever!'
+   endif
+   let [pos1, pos2] = self.root.systems[a:options.id].post_process(arg, a:options)
+   return self.objects.new('area', self.objects.new('position', pos1), self.objects.new('position', pos2))
+endfunction "c.post_process_text_object
 
 " c.reset(options) dict abort "{{{3
 " Ditto
@@ -1001,12 +575,12 @@ function! c.get_text_object_from_area(pos1, pos2, options) dict
   echom 'c.gtofa: to2 => ' . to2.to_s()
   let to = self.choose_text_object(to1, to2)
   if !to.valid() && to1.valid() && to2.valid() &&
-        \ self.boundary_kind(to1.end) == 'middle' &&
-        \ self.boundary_kind(to2.start) == 'middle'
+        \ self.boundary_kind(to1.end()) == 'middle' &&
+        \ self.boundary_kind(to2.start()) == 'middle'
     let to_all = self.find_text_object(a:pos1, {'inner': 0})
     if to_all.contains(to1) && to_all.contains(to2)
       let to = to1
-      call to.end(to2.end)
+      call to.end(to2.end())
     else
       return self.objects.new('text-object')
     endif
@@ -1173,7 +747,7 @@ endfunction "c.get_boundary
 " c.boundary_kind(boundary) dict abort "{{{3
 " Ditto
 function! c.boundary_kind(boundary) dict
-  call cursor(a:boundary.first())
+  call cursor(a:boundary.first().to_l())
   let pos = self.objects.new('position')
   for kind in keys(filter(copy(self.patterns), 'v:val != ""'))
     call pos.position(searchpos(self.patterns[kind], 'Wcn', 0, 100))
@@ -1204,7 +778,7 @@ endfunction "c.text_object_kind
 " Ditto
 function! c.choose_text_object(to1, to2) dict
   if empty(a:to1) || empty(a:to2)
-    return {}
+    return self.objects.new('text_object')
   endif
   if a:to1.equal(a:to2)
     return a:to1
@@ -1214,7 +788,7 @@ function! c.choose_text_object(to1, to2) dict
   elseif a:to2.contains(a:to1)
     return a:to2
   else
-    return {}
+    return self.objects.new('text_object')
   endif
 endfunction "c.choose_text_object
 
@@ -1224,38 +798,6 @@ function! c.push_boundary(boundary, forward, inner) dict
   let pos = self.find_from(a:boundary.first(), a:forward, a:inner)
   return self.get_boundary(pos)
 endfunction "c.push_boundary
-
-" c.post_process_text_object(to, options) dict abort "{{{3
-" Ditto
-function! c.post_process_text_object(to, options) dict abort
-  if a:options.inner
-    return self.post_process_inner(a:to, a:options)
-  endif
-  return self.post_process_all(a:to, a:options)
-  3230
-endfunction "c.post_process_text_object
-
-" c.post_process_all(to, options) dict abort "{{{3
-" Ditto
-function! c.post_process_all(to, options) dict abort
-  return self.objects.new('area', a:to.start().first(), a:to.end().last())
-endfunction "c.post_process_all
-
-" c.post_process_inner(to, options) dict abort "{{{3
-" Ditto
-function! c.post_process_inner(to, options) dict abort
-  if len(getline(a:to.start().last().line())) > a:to.start().last().column()
-    let pos1 = self.objects.new('position', a:to.start().last().line(), a:to.start().column() + 1)
-  else
-    let pos1 = self.objects.new('position', a:to.start().last().line() + 1, 1)
-  endif
-  if a:to.end.first[1] > 1
-    let pos2 = self.objects.new('position', a:to.end().first().line(), a:to.end().first().column() - 1)
-  else
-    let pos2 = self.objects.new('position', a:to.end().first().line() - 1, len(getline(a:to.end().first()line() - 1)))
-  endif
-  return self.objects.new('area', [pos1, pos2])
-endfunction "c.post_process_inner
 
 " Text-object framework {{{1
 let f = {}
@@ -1313,6 +855,7 @@ function! f.setup(settings, ...) dict abort
     let options.patterns.start = options.start
     let options.patterns.middle = options.middle
     let options.patterns.end = options.end
+    "TODO: Manage lack of post-processor.
     let self.systems[options.id] = options
     call self.create_plug_mappings(options.id)
   endif
@@ -1324,24 +867,40 @@ endfunction "f.setup
 function! f.create_plug_mappings(id) dict
   "TODO: Put this on the settings as strings to be used after setup.
   for [sufix, inner] in [['a', 0], ['i', 1]]
-    execute 'onoremap <expr><Plug>' . self.name . '-' . a:id . '-o' . sufix . ' ' .
-          \ self.name . 'handle_mapping(' . string(a:id) . ', 0, ' . inner . ', ' . self.systems[a:id].default_mode . ')'
-    execute 'vnoremap <Plug>' . self.name . '-' . a:id . '-v' . sufix .
-          \ ' <Esc>:exec ' . self.name . 'handle_mapping(' .
-          \ string(a:id) . ', 1, ' . inner . ', visualmode())<CR><Esc>gv'
+    let mapping = 'onoremap <expr><Plug>'
+    let mapping .= self.name . '-' . a:id . '-o' . sufix . ' '
+    let mapping .= self.name . 'handle_mapping('
+    let mapping .= string(a:id)
+    let mapping .= ', 0, '
+    let mapping .= inner
+    let mapping .= ", '" . self.systems[a:id].default_mode
+    let mapping .= "')"
+    execute mapping
+    let mapping = 'vnoremap <Plug>'
+    let mapping .= self.name . '-' . a:id . '-v' . sufix . ' '
+    let mapping .= '<Esc>:exec ' . self.name . 'handle_mapping('
+    let mapping .= string(a:id)
+    let mapping .= ', 1'
+    let mapping .= ', ' . inner
+    let mapping .= ', visualmode()'
+    let mapping .= ')<CR><Esc>gv'
+    execute mapping
   endfor
 endfunction "f.create_plug_mappings
 
 " f.create_user_mappings(id) dict abort "{{{3
 " Ditto
 function! f.create_user_mappings(id) dict
+  let local = self.systems[a:id].map_local ? '<buffer> ' : ''
   let mappings = []
   for mode in ['o',self.systems[a:id].map_visual_mode]
     for prefix in ['a', 'i']
       if self.get_options(a:id).overwrite_mappings ||
             \ empty(maparg(prefix . self.systems[a:id].map_sufix, mode))
-        let mapping = mode . 'map ' . prefix . self.systems[a:id].map_sufix .
-              \ ' <Plug>' . self.name . '-' . a:id . '-' . mode . prefix
+        let mapping = mode . 'map '
+        let mapping .= local . '<silent>'
+        let mapping .= prefix . self.systems[a:id].map_sufix . ' '
+        let mapping .= '<Plug>' . self.name . '-' . a:id . '-' . mode . prefix
         call add(mappings, mapping)
       else
         echoe 'Create user mappings: A mapping to ''' . prefix . self.systems[a:id].map_sufix . ''' in ' . (mode == 'o' ? 'opreator pending' : 'visual') . ' mode already exists! Aborting.'
@@ -1383,24 +942,30 @@ endfunction "f.set_marks
 " Ditto
 function! f.selection_command(options) dict
   if a:options.visual
-    return "normal! `[".a:options.mode."`]"
+    return "normal! `[" . a:options.mode . "`]"
   else
-    return ":\<C-U>".'exec "normal! `['.a:options.mode.'`]"' . "\<CR>"
+    return ":\<C-U>" .
+          \ 'exec "normal! `[' .
+          \ a:options.mode .
+          \ '`]"' .
+          \ "\<CR>"
   endif
 endfunction "f.selection_command
 
 " Systems {{{2
 " TODO: Implement text-objects for any char with getchar() (:h <expr>).
-let f.systems                     = {}
-let f.defaults                    = {}
-let f.defaults.always_middle      = 0
-let f.defaults.map_local          = 1
-let f.defaults.map_sufix          = ''
-let f.defaults.middle             = ''
-let f.defaults.skip               = ''
-let f.defaults.default_mode       = 'v'
-let f.defaults.map_visual_mode    = 'v'
-let f.defaults.overwrite_mappings = 0
+let f.systems                          = {}
+let f.defaults                         = {}
+let f.defaults.always_middle           = 0
+let f.defaults.map_local               = 1
+let f.defaults.map_sufix               = ''
+let f.defaults.middle                  = ''
+let f.defaults.skip                    = ''
+let f.defaults.default_mode            = 'v'
+let f.defaults.map_visual_mode         = 'v'
+let f.defaults.overwrite_mappings      = 0
+let f.defaults.linewise                = 0
+let f.defaults.post_processor_arg_type = 'l' "one of o, d, l or m
 " f.get_options(id) dict abort "{{{3
 " Ditto
 function! f.get_options(...) dict
@@ -1430,8 +995,15 @@ endfunction "textobj#reggie#handle_mapping
 " textobj#reggie#get_dictionary() "{{{2
 " Ditto
 function! textobj#reggie#get_dictionary()
-  return deepcopy(f)
+  return deepcopy(g:f)
 endfunction "textobj#reggie#get_dictionary
+
+" textobj#reggie#get_objects() abort "{{{2
+" Ditto
+function! textobj#reggie#get_objects() abort
+  return deepcopy(g:r)
+endfunction "textobj#reggie#get_objects
+
 " VimL text-objects {{{1
 " Patterns' dict {{{2
 
@@ -1439,6 +1011,7 @@ let v = {}
 let v.id = 'viml'
 let v.map_sufix = 'z'
 let v.map_local = 1
+let v.post_processor_arg_type = 'o'
 let v.overwrite_mappings = 1
 let v.skip =
       \ 'getline(".") =~ "^\\s*sy\\%[ntax]\\s\\+region" ||' .
@@ -1454,58 +1027,64 @@ let v.middle =
 let v.end =
       \ '\C\m\%(^\||\)\s*\zs\%(\<endf\%[unction]\>\|\<end\%(w\%[hile]\|fo\%[r]\)\>\|'.
       \ '\<en\%[dif]\>\|\<endt\%[ry]\>\|\<aug\%[roup]\s\+END\>\)'
+let v.objects = textobj#reggie#get_objects()
+" v.post_process(to, options) dict abort "{{{3
+" Ditto
+function! v.post_process(to, options) dict abort
+  if a:options.inner
+    return self.post_process_inner(a:to, a:options)
+  endif
+  return self.post_process_all(a:to, a:options)
+endfunction "v.post_process
+
+" v.post_process_all(to, options) dict abort "{{{3
+" Ditto
+function! v.post_process_all(to, options) dict abort
+  " TODO: Respect command separators (|, ;, etc.)
+  " TODO: Consider continued lines.
+  echom 'v.ppa: to => ' . a:to.to_s()
+  if a:options.visual || v:operator != 'c'
+    call cursor(a:to.end().last().to_l())
+    let result = [[a:to.start().first().line(), 1], [a:to.end().last().line(), col('$')]]
+    if !a:options.visual
+      let a:options.mode = 'V'
+    endif
+  else
+    call cursor(a:to.end().last().to_l())
+    let result = [a:to.start().first(), [a:to.end().last().line(), col('$') - 1]]
+  endif
+  return result
+endfunction "v.post_process_all
+
+" v.post_process_inner(to, options) dict abort "{{{3
+" Ditto
+function! v.post_process_inner(to, options) dict abort
+  if a:to.start().last().line() == a:to.end().first().line() + 1
+    return map([0,0], 'self.objects.new("position")')
+  endif
+  if a:to.start().last().line() == a:to.end().first().line()
+    " TODO: How to handle this? We need a way to respect command delimiters
+    " in order to have a decent handling of things.
+    return map([0,0], 'self.objects.new("position")')
+  endif
+  if a:options.visual || v:operator != 'c'
+    let pos1 = self.objects.new('position',
+          \ [a:to.start().last().line() + 1, 1])
+    call cursor([a:to.end().last().line() - 1, 1])
+    let pos2 = self.objects.new('position',
+          \ [a:to.end().first().line() - 1, col('$') - 1])
+    if !a:options.visual
+      let a:options.mode = 'V'
+    endif
+  else
+    call cursor([a:to.start().last().line() + 1, 1])
+    let pos1 = self.objects.new('position',
+          \ searchpos('^\s*', 'e'))
+    call cursor([a:to.end().first().line() - 1, 1])
+    let pos2 = self.objects.new('position',
+          \ [a:to.end().first().line() - 1, col('$') - 1])
+  endif
+  return [pos1, pos2]
+endfunction "v.post_process_inner
 
 call textobj#reggie#setup(v, 1)
-
-"finish "{{{1
-let pattern = {}
-" VimL settings:
-let pattern.skip =
-      \ 'getline(".") =~ "^\\s*sy\\%[ntax]\\s\\+region" ||' .
-      \ 'synIDattr(synID(line("."),col("."),1),"name") =~? '.
-      \ '"\\mcomment\\|string\\|vim\k\{-}var"'
-" Start of the block matches this
-let pattern.start = '\C\m\%(^\||\)\s*\zs\%('.
-      \ '\<fu\%[nction]\>\|\<\%(wh\%[ile]\|for\)\>\|\<if\>\|\<try\>\|'.
-      \ '\<aug\%[roup]\s\+\%(END\>\)\@!\S'.
-      \ '\)'
-" Middle of the block matches this
-let pattern.middle = '\C\m\%(^\||\)\s*\zs\%(\<el\%[seif]\>\|\<cat\%[ch]\>\|\<fina\%[lly]\>\)'
-" End of the block matches this
-let pattern.end =
-      \ '\C\m\%(^\||\)\s*\zs\%(\<endf\%[unction]\>\|\<end\%(w\%[hile]\|fo\%[r]\)\>\|'.
-      \ '\<en\%[dif]\>\|\<endt\%[ry]\>\|\<aug\%[roup]\s\+END\>\)'
-let dict = {}
-let dict.pattern = pattern
-let dict.intersect_txtobjs = 0
-onoremap <expr> ax ReggieTextObj(dict, 0, 0)
-onoremap <expr> ix ReggieTextObj(dict, 0, 1)
-vnoremap  ax <Esc>:exec ReggieTextObj(dict, 1, 0, visualmode())<CR><Esc>gv
-vnoremap  ix <Esc>:exec ReggieTextObj(dict, 1, 1, visualmode())<CR><Esc>gv
-finish
-{{{1
-if 1
-  if 2
-  elseif
-  elseif | elseif
-    echo 1
-  else
-  endif
-  if 1
-    echo 1
-  else
-    echo 2
-  endif
-else
-  echo 2
-  for a in []
-    echo a
-  endfor
-endif
-if {
-  if {
-    zldkfh
-    abcABC
-    aljdñh
-     }
-    }
