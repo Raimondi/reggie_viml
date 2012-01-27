@@ -958,6 +958,7 @@ let f.systems                          = {}
 let f.defaults                         = {}
 let f.defaults.always_middle           = 0
 let f.defaults.map_local               = 1
+let f.defaults.filetype                = 0
 let f.defaults.map_sufix               = ''
 let f.defaults.middle                  = ''
 let f.defaults.skip                    = ''
