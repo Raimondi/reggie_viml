@@ -59,7 +59,32 @@ function! f.setup(settings, ...) dict abort
     call self.create_plug_mappings(options.id)
   endif
   call self.create_user_mappings(options.id)
+  if self.systems[options.id].filetype
+    call self.set_undo_ftplugin(options.id)
+  endif
 endfunction "f.setup
+
+" f.set_undo_ftplugin(id) dict abort "{{{3
+" Set the b:undo_ftplugin variable.
+function! f.set_undo_ftplugin(id) dict abort
+  let local = self.systems[a:id].map_local ? '<buffer> ' : ''
+  let undo_ftplugin = ''
+  for mode in ['o',self.systems[a:id].map_visual_mode]
+    for prefix in ['a', 'i']
+      let undo_ftplugin .= 'sil! '
+      let undo_ftplugin .= mode . 'unmap '
+      let undo_ftplugin .= local
+      let undo_ftplugin .= prefix . self.systems[a:id].map_sufix
+      let undo_ftplugin .= '| '
+    endfor
+  endfor
+  if exists('b:undo_ftplugin') && b:undo_ftplugin !~ '^\s*$'
+    let b:undo_ftplugin = undo_ftplugin . b:undo_ftplugin
+  else
+   echom 1
+    let b:undo_ftplugin = undo_ftplugin[:-3]
+  endif
+endfunction "f.set_undo_ftplugin
 
 " f.create_plug_mappings(id) dict abort "{{{3
 "  Ditto
