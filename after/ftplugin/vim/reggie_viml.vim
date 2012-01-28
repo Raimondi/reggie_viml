@@ -37,7 +37,6 @@ endfunction "v.post_process
 function! v.post_process_all(to, options) dict abort
   " TODO: Respect command separators (|, ;, etc.)
   " TODO: Consider continued lines.
-  echom 'v.ppa: to => ' . a:to.to_s()
   if a:options.visual || v:operator != 'c'
     call cursor(a:to.end().last().to_l())
     let result = [[a:to.start().first().line(), 1], [a:to.end().last().line(), col('$')]]
